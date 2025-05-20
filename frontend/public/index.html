@@ -3,651 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asystent Prawny - Panel testowy</title>
+    <title>Test połączenia</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 1000px;
+            max-width: 800px;
             margin: 0 auto;
-            background-color: white;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-        h1, h2, h3 {
-            color: #1976d2;
-        }
-        .card {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 4px;
-            background-color: #fff;
-        }
-        .button {
-            background-color: #1976d2;
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
             color: white;
             border: none;
-            padding: 10px 15px;
             border-radius: 4px;
             cursor: pointer;
             margin: 5px;
-        }
-        .button:hover {
-            background-color: #1565c0;
-        }
-        .button.secondary {
-            background-color: #757575;
-        }
-        .button.secondary:hover {
-            background-color: #616161;
-        }
-        .status {
-            padding: 5px 10px;
-            border-radius: 4px;
-            display: inline-block;
-            margin: 3px 0;
-        }
-        .status.success {
-            background-color: #c8e6c9;
-            color: #2e7d32;
-        }
-        .status.error {
-            background-color: #ffcdd2;
-            color: #c62828;
-        }
-        .status.pending {
-            background-color: #fff9c4;
-            color: #f57f17;
-        }
-        .endpoints {
-            margin-top: 20px;
-        }
-        .endpoint {
-            padding: 8px;
-            margin: 5px 0;
-            background-color: #f8f8f8;
-            border-radius: 4px;
-            font-family: monospace;
         }
         .results {
             background-color: #f5f5f5;
             padding: 10px;
             border-radius: 4px;
             margin-top: 10px;
-            max-height: 300px;
-            overflow: auto;
+            min-height: 100px;
         }
         pre {
             white-space: pre-wrap;
             word-wrap: break-word;
-            margin: 0;
-        }
-        .services {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .service-card {
-            flex: 1;
-            min-width: 200px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 10px;
-        }
-        .tabs {
-            display: flex;
-            border-bottom: 1px solid #ddd;
-            margin-bottom: 15px;
-        }
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-        }
-        .tab.active {
-            border-bottom-color: #1976d2;
-            font-weight: bold;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        .badge {
-            background-color: #1976d2;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-        }
-        .footer {
-            margin-top: 30px;
-            text-align: center;
-            color: #757575;
-            font-size: 0.9em;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        .auth-info {
-            padding: 10px;
-            margin-top: 15px;
-            background-color: #e8f5e9;
-            border-radius: 4px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Asystent Prawny <span class="badge">Test Mode</span></h1>
-            <div>
-                <button id="refreshAll" class="button">Odśwież wszystko</button>
-            </div>
-        </header>
-        
-        <p>Panel testowy aplikacji Asystent Prawny, umożliwiający monitorowanie stanu usług i testowanie API.</p>
-        
-        <div class="tabs">
-            <div class="tab active" data-tab="status">Status systemów</div>
-            <div class="tab" data-tab="auth">Uwierzytelnianie</div>
-            <div class="tab" data-tab="api">Test API</div>
-            <div class="tab" data-tab="info">Informacje</div>
-        </div>
-        
-        <div id="status-tab" class="tab-content active">
-            <div class="card">
-                <h2>Stan usług</h2>
-                
-                <div class="services">
-                    <div class="service-card">
-                        <h3>Frontend</h3>
-                        <p class="status success">Działa</p>
-                    </div>
-                    
-                    <div class="service-card">
-                        <h3>Backend</h3>
-                        <p id="backendStatus" class="status pending">Sprawdzanie...</p>
-                        <button class="button" onclick="checkBackendStatus()">Odśwież</button>
-                    </div>
-                </div>
-                
-                <div class="services" id="otherServices">
-                    <!-- Tu będą dynamicznie dodawane inne usługi -->
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>Szczegółowa diagnostyka</h2>
-                <button class="button" onclick="checkServiceDetails()">Sprawdź szczegóły usług</button>
-                <div id="serviceDetails" class="results">
-                    <p>Kliknij przycisk, aby sprawdzić szczegóły usług.</p>
-                </div>
-            </div>
-        </div>
-        
-        <div id="auth-tab" class="tab-content">
-            <div class="card">
-                <h2>Rejestracja użytkownika</h2>
-                <div class="form-group">
-                    <label for="registerEmail">Email:</label>
-                    <input type="email" id="registerEmail" placeholder="email@przykład.pl">
-                </div>
-                <div class="form-group">
-                    <label for="registerFullName">Imię i nazwisko:</label>
-                    <input type="text" id="registerFullName" placeholder="Jan Kowalski">
-                </div>
-                <div class="form-group">
-                    <label for="registerPassword">Hasło:</label>
-                    <input type="password" id="registerPassword" placeholder="Minimum 6 znaków">
-                </div>
-                <button class="button" onclick="registerUser()">Zarejestruj</button>
-                <div id="registerResults" class="results">
-                    <p>Wypełnij formularz, aby zarejestrować użytkownika.</p>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>Logowanie</h2>
-                <div class="form-group">
-                    <label for="loginEmail">Email:</label>
-                    <input type="email" id="loginEmail" placeholder="email@przykład.pl">
-                </div>
-                <div class="form-group">
-                    <label for="loginPassword">Hasło:</label>
-                    <input type="password" id="loginPassword">
-                </div>
-                <button class="button" onclick="loginUser()">Zaloguj</button>
-                <div id="loginResults" class="results">
-                    <p>Wypełnij formularz, aby się zalogować.</p>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>Chronione endpointy</h2>
-                <p>Aby przetestować chronione endpointy, najpierw zaloguj się, aby uzyskać token.</p>
-                
-                <div id="authInfo" class="auth-info" style="display: none;">
-                    <p><strong>Status uwierzytelnienia:</strong> <span id="authStatus">Nie zalogowano</span></p>
-                    <p><strong>Token:</strong> <span id="authToken">Brak</span></p>
-                </div>
-                
-                <div class="endpoints">
-                    <div class="endpoint">/api/users/me/</div>
-                    <button class="button" onclick="testProtectedEndpoint('/api/users/me/')">Test</button>
-                    
-                    <div class="endpoint">/api/secure-data/</div>
-                    <button class="button" onclick="testProtectedEndpoint('/api/secure-data/')">Test</button>
-                </div>
-                
-                <div id="protectedResults" class="results">
-                    <p>Zaloguj się, aby przetestować chronione endpointy.</p>
-                </div>
-            </div>
-        </div>
-        
-        <div id="api-tab" class="tab-content">
-            <div class="card">
-                <h2>Test API</h2>
-                <p>Wybierz endpoint do przetestowania:</p>
-                
-                <div class="endpoints">
-                    <div class="endpoint">/api</div>
-                    <button class="button" onclick="testEndpoint('/api')">Test</button>
-                    
-                    <div class="endpoint">/api/health</div>
-                    <button class="button" onclick="testEndpoint('/api/health')">Test</button>
-                    
-                    <div class="endpoint">/api/config</div>
-                    <button class="button" onclick="testEndpoint('/api/config')">Test</button>
-                    
-                    <div class="endpoint">/api/api-info</div>
-                    <button class="button" onclick="testEndpoint('/api/api-info')">Test</button>
-                    
-                    <div class="endpoint">/api/check-services</div>
-                    <button class="button" onclick="testEndpoint('/api/check-services')">Test</button>
-                </div>
-                
-                <div id="apiTestResults" class="results">
-                    <p>Wybierz endpoint do testowania.</p>
-                </div>
-            </div>
-        </div>
-        
-        <div id="info-tab" class="tab-content">
-            <div class="card">
-                <h2>Informacje o środowisku</h2>
-                <p>Ta instancja działa w środowisku testowym przy użyciu kontenerów Docker.</p>
-                <p>Usługi:</p>
-                <ul>
-                    <li>Frontend (Nginx)</li>
-                    <li>Backend (FastAPI)</li>
-                    <li>Baza danych (PostgreSQL)</li>
-                    <li>Składowanie plików (MinIO)</li>
-                    <li>Wyszukiwanie (Elasticsearch)</li>
-                </ul>
-                
-                <h3>Porty:</h3>
-                <ul>
-                    <li>Frontend: 3000</li>
-                    <li>Backend API: 8000</li>
-                    <li>MinIO API: 9000</li>
-                    <li>MinIO Console: 9001</li>
-                </ul>
-            </div>
-            
-            <div class="card">
-                <h2>Polecenia Docker</h2>
-                <p>Przydatne polecenia do zarządzania aplikacją:</p>
-                
-                <div class="endpoint">docker-compose ps</div>
-                <p>Sprawdzenie statusu wszystkich kontenerów</p>
-                
-                <div class="endpoint">docker-compose logs backend</div>
-                <p>Podgląd logów usługi backend</p>
-                
-                <div class="endpoint">docker-compose down</div>
-                <p>Zatrzymanie wszystkich kontenerów</p>
-                
-                <div class="endpoint">docker-compose up -d</div>
-                <p>Uruchomienie wszystkich kontenerów</p>
-            </div>
-        </div>
-        
-        <div class="footer">
-            Asystent Prawny - Testowa Aplikacja | © 2025
-        </div>
+    <h1>Test połączenia z backendem</h1>
+    
+    <div>
+        <button onclick="testFetchBackend()">Test 1: Użycie Fetch API</button>
+        <button onclick="testXhrBackend()">Test 2: Użycie XMLHttpRequest</button>
+        <button onclick="testJqueryBackend()">Test 3: Użycie jQuery</button>
     </div>
-
+    
+    <div class="results" id="results">
+        <p>Kliknij przycisk, aby przetestować połączenie.</p>
+    </div>
+    
     <script>
-        // Stan uwierzytelnienia
-        let authToken = null;
-        
-        // Funkcje obsługi zakładek
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                // Usuń klasę active z wszystkich zakładek
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                
-                // Dodaj klasę active do klikniętej zakładki
-                tab.classList.add('active');
-                document.getElementById(tab.dataset.tab + '-tab').classList.add('active');
-            });
-        });
-        
-        // Funkcja sprawdzająca status backendu
-        function checkBackendStatus() {
-            const statusElement = document.getElementById('backendStatus');
-            
-            statusElement.textContent = 'Łączenie...';
-            statusElement.className = 'status pending';
+        // Test 1: Użycie Fetch API
+        function testFetchBackend() {
+            const resultsElement = document.getElementById('results');
+            resultsElement.innerHTML = '<p>Testowanie połączenia za pomocą Fetch API...</p>';
             
             fetch('/api')
                 .then(response => {
-                    if (response.ok) {
-                        return response.json().then(data => {
-                            statusElement.textContent = 'Działa - ' + data.message;
-                            statusElement.className = 'status success';
-                        });
-                    } else {
-                        throw new Error(`Kod odpowiedzi: ${response.status}`);
-                    }
+                    resultsElement.innerHTML += `
+                        <p>Status: ${response.status} ${response.statusText}</p>
+                        <p>Headers:</p>
+                        <pre>${JSON.stringify(Object.fromEntries([...response.headers]), null, 2)}</pre>
+                    `;
+                    return response.text();
                 })
-                .catch(error => {
-                    console.error('Błąd:', error);
-                    statusElement.textContent = 'Błąd połączenia';
-                    statusElement.className = 'status error';
-                });
-        }
-        
-        // Funkcja sprawdzająca szczegóły usług
-        function checkServiceDetails() {
-            const detailsElement = document.getElementById('serviceDetails');
-            const servicesElement = document.getElementById('otherServices');
-            
-            detailsElement.innerHTML = '<p>Pobieranie informacji o usługach...</p>';
-            
-            fetch('/api/check-services')
-                .then(response => {
-                    if (response.ok) {
-                        return response.json().then(data => {
-                            detailsElement.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-                            
-                            // Aktualizacja kart usług
-                            servicesElement.innerHTML = '';
-                            
-                            for (const [service, status] of Object.entries(data.services)) {
-                                const statusClass = status === "Działa" ? "success" : 
-                                                   status === "Nie sprawdzono" ? "pending" : "error";
-                                
-                                const serviceCard = document.createElement('div');
-                                serviceCard.className = 'service-card';
-                                serviceCard.innerHTML = `
-                                    <h3>${service.charAt(0).toUpperCase() + service.slice(1)}</h3>
-                                    <p class="status ${statusClass}">${status}</p>
-                                `;
-                                servicesElement.appendChild(serviceCard);
-                            }
-                        });
-                    } else {
-                        throw new Error(`Kod odpowiedzi: ${response.status}`);
-                    }
-                })
-                .catch(error => {
-                    console.error('Błąd:', error);
-                    detailsElement.innerHTML = `<pre>Błąd podczas pobierania informacji: ${error.message}</pre>`;
-                });
-        }
-        
-        // Funkcja testująca endpoint
-        function testEndpoint(endpoint) {
-            const resultsElement = document.getElementById('apiTestResults');
-            
-            resultsElement.innerHTML = `<p>Testowanie endpointu ${endpoint}...</p>`;
-            
-            fetch(endpoint)
-                .then(response => {
-                    const statusText = response.ok ? 'Sukces' : 'Błąd';
-                    const statusClass = response.ok ? 'success' : 'error';
+                .then(text => {
+                    resultsElement.innerHTML += `
+                        <p>Odpowiedź jako tekst:</p>
+                        <pre>${text}</pre>
+                        <p>Próba parsowania do JSON:</p>
+                    `;
                     
-                    return response.json()
-                        .then(data => {
-                            resultsElement.innerHTML = `
-                                <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
-                                <pre>${JSON.stringify(data, null, 2)}</pre>
-                            `;
-                        })
-                        .catch(e => {
-                            resultsElement.innerHTML = `
-                                <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
-                                <p>Treść odpowiedzi nie jest w formacie JSON</p>
-                            `;
-                        });
+                    try {
+                        const json = JSON.parse(text);
+                        resultsElement.innerHTML += `<pre>${JSON.stringify(json, null, 2)}</pre>`;
+                    } catch (e) {
+                        resultsElement.innerHTML += `<p>Błąd parsowania JSON: ${e.message}</p>`;
+                    }
                 })
                 .catch(error => {
-                    console.error('Błąd:', error);
-                    resultsElement.innerHTML = `<pre>Błąd podczas testowania: ${error.message}</pre>`;
+                    resultsElement.innerHTML += `
+                        <p>BŁĄD: Nie można połączyć się z API</p>
+                        <p>Komunikat błędu: ${error.message}</p>
+                    `;
                 });
         }
         
-        // Funkcja rejestrująca użytkownika
-        function registerUser() {
-            const email = document.getElementById('registerEmail').value;
-            const fullName = document.getElementById('registerFullName').value;
-            const password = document.getElementById('registerPassword').value;
-            const resultsElement = document.getElementById('registerResults');
+        // Test 2: Użycie XMLHttpRequest (starszy sposób)
+        function testXhrBackend() {
+            const resultsElement = document.getElementById('results');
+            resultsElement.innerHTML = '<p>Testowanie połączenia za pomocą XMLHttpRequest...</p>';
             
-            if (!email || !fullName || !password) {
-                resultsElement.innerHTML = '<p class="status error">Wypełnij wszystkie pola formularza</p>';
-                return;
-            }
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api', true);
             
-            resultsElement.innerHTML = '<p>Rejestracja użytkownika...</p>';
-            
-            fetch('/api/users/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    email: email,
-                    full_name: fullName,
-                    password: password
-                })
-            })
-            .then(response => {
-                const statusText = response.ok ? 'Sukces' : 'Błąd';
-                const statusClass = response.ok ? 'success' : 'error';
-                
-                return response.json()
-                    .then(data => {
-                        resultsElement.innerHTML = `
-                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
-                            <pre>${JSON.stringify(data, null, 2)}</pre>
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    resultsElement.innerHTML += `
+                        <p>Status: ${xhr.status}</p>
+                        <p>Odpowiedź:</p>
+                        <pre>${xhr.responseText}</pre>
+                    `;
+                    
+                    try {
+                        const json = JSON.parse(xhr.responseText);
+                        resultsElement.innerHTML += `
+                            <p>Parsowanie JSON:</p>
+                            <pre>${JSON.stringify(json, null, 2)}</pre>
                         `;
-                        
-                        if (response.ok) {
-                            // Automatycznie wypełnij dane logowania
-                            document.getElementById('loginEmail').value = email;
-                            document.getElementById('loginPassword').value = password;
-                            
-                            // Przejdź do sekcji logowania
-                            const loginCard = document.querySelector('.card:nth-child(2)');
-                            loginCard.scrollIntoView({ behavior: 'smooth' });
-                        }
-                    })
-                    .catch(e => {
-                        resultsElement.innerHTML = `
-                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
-                            <p>Treść odpowiedzi nie jest w formacie JSON</p>
-                        `;
-                    });
-            })
-            .catch(error => {
-                console.error('Błąd:', error);
-                resultsElement.innerHTML = `<pre>Błąd podczas rejestracji: ${error.message}</pre>`;
-            });
-        }
-        
-        // Funkcja logująca użytkownika
-        function loginUser() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            const resultsElement = document.getElementById('loginResults');
-            
-            if (!email || !password) {
-                resultsElement.innerHTML = '<p class="status error">Wypełnij wszystkie pola formularza</p>';
-                return;
-            }
-            
-            resultsElement.innerHTML = '<p>Logowanie użytkownika...</p>';
-            
-            // Przygotowanie formdata
-            const formData = new URLSearchParams();
-            formData.append('username', email);
-            formData.append('password', password);
-            
-            fetch('/api/token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: formData
-            })
-            .then(response => {
-                const statusText = response.ok ? 'Sukces' : 'Błąd';
-                const statusClass = response.ok ? 'success' : 'error';
-                
-                return response.json()
-                    .then(data => {
-                        resultsElement.innerHTML = `
-                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
-                            <pre>${JSON.stringify(data, null, 2)}</pre>
-                        `;
-                        
-                        if (response.ok && data.access_token) {
-                            // Zapisz token
-                            authToken = data.access_token;
-                            
-                            // Aktualizuj informacje o uwierzytelnieniu
-                            document.getElementById('authInfo').style.display = 'block';
-                            document.getElementById('authStatus').textContent = 'Zalogowano';
-                            document.getElementById('authStatus').className = 'status success';
-                            document.getElementById('authToken').textContent = authToken.substring(0, 20) + '...';
-                            
-                            // Przejdź do sekcji chronionych endpointów
-                            const protectedCard = document.querySelector('.card:nth-child(3)');
-                            protectedCard.scrollIntoView({ behavior: 'smooth' });
-                        }
-                    })
-                    .catch(e => {
-                        resultsElement.innerHTML = `
-                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
-                            <p>Treść odpowiedzi nie jest w formacie JSON</p>
-                        `;
-                    });
-            })
-            .catch(error => {
-                console.error('Błąd:', error);
-                resultsElement.innerHTML = `<pre>Błąd podczas logowania: ${error.message}</pre>`;
-            });
-        }
-        
-        // Funkcja testująca chroniony endpoint
-        function testProtectedEndpoint(endpoint) {
-            const resultsElement = document.getElementById('protectedResults');
-            
-            if (!authToken) {
-                resultsElement.innerHTML = '<p class="status error">Najpierw zaloguj się, aby uzyskać token</p>';
-                return;
-            }
-            
-            resultsElement.innerHTML = `<p>Testowanie chronionego endpointu ${endpoint}...</p>`;
-            
-            fetch(endpoint, {
-                headers: {
-                    'Authorization': `Bearer ${authToken}`
+                    } catch (e) {
+                        resultsElement.innerHTML += `<p>Błąd parsowania JSON: ${e.message}</p>`;
+                    }
+                } else {
+                    resultsElement.innerHTML += `
+                        <p>Błąd: ${xhr.status}</p>
+                        <p>Odpowiedź:</p>
+                        <pre>${xhr.responseText}</pre>
+                    `;
                 }
-            })
-            .then(response => {
-                const statusText = response.ok ? 'Sukces' : 'Błąd';
-                const statusClass = response.ok ? 'success' : 'error';
-                
-                return response.json()
-                    .then(data => {
-                        resultsElement.innerHTML = `
-                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
-                            <pre>${JSON.stringify(data, null, 2)}</pre>
-                        `;
-                    })
-                    .catch(e => {
-                        resultsElement.innerHTML = `
-                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
-                            <p>Treść odpowiedzi nie jest w formacie JSON</p>
-                        `;
-                    });
-            })
-            .catch(error => {
-                console.error('Błąd:', error);
-                resultsElement.innerHTML = `<pre>Błąd podczas testowania: ${error.message}</pre>`;
-            });
+            };
+            
+            xhr.onerror = function() {
+                resultsElement.innerHTML += `
+                    <p>BŁĄD: Nie można nawiązać połączenia</p>
+                `;
+            };
+            
+            xhr.send();
         }
         
-        // Obsługa przycisku "Odśwież wszystko"
-        document.getElementById('refreshAll').addEventListener('click', () => {
-            checkBackendStatus();
-            checkServiceDetails();
-        });
+        // Test 3: Użycie jQuery (wymaga zaimportowania biblioteki)
+        function testJqueryBackend() {
+            const resultsElement = document.getElementById('results');
+            resultsElement.innerHTML = '<p>Test jQuery wymaga załadowania biblioteki jQuery.</p>';
+            
+            // Dodanie skryptu jQuery, jeśli nie jest już załadowany
+            if (typeof jQuery === 'undefined') {
+                const script = document.createElement('script');
+                script.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
+                script.onload = function() {
+                    runJqueryTest();
+                };
+                document.head.appendChild(script);
+            } else {
+                runJqueryTest();
+            }
+            
+            function runJqueryTest() {
+                resultsElement.innerHTML = '<p>Testowanie połączenia za pomocą jQuery...</p>';
+                
+                $.ajax({
+                    url: '/api',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                        resultsElement.innerHTML += `
+                            <p>SUKCES!</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                    },
+                    error: function(xhr, status, error) {
+                        resultsElement.innerHTML += `
+                            <p>BŁĄD: ${status}</p>
+                            <p>Komunikat: ${error}</p>
+                            <p>Odpowiedź:</p>
+                            <pre>${xhr.responseText}</pre>
+                        `;
+                    }
+                });
+            }
+        }
         
-        // Sprawdź status po załadowaniu strony
-        window.addEventListener('load', () => {
-            checkBackendStatus();
-            // Symulowane inne usługi
-            const servicesElement = document.getElementById('otherServices');
-            const services = ['database', 'authentication'];
-            
-            services.forEach(service => {
-                const serviceCard = document.createElement('div');
-                serviceCard.className = 'service-card';
-                serviceCard.innerHTML = `
-                    <h3>${service.charAt(0).toUpperCase() + service.slice(1)}</h3>
-                    <p class="status pending">Nie sprawdzono</p>
-                `;
-                servicesElement.appendChild(serviceCard);
-            });
-            
-            // Sprawdź usługi
-            checkServiceDetails();
-        });
+        // Uruchom test Fetch API po załadowaniu strony
+        window.addEventListener('load', testFetchBackend);
     </script>
 </body>
 </html>

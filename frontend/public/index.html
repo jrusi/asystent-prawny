@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asystent Prawny - Testowa strona</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1976d2;
+        }
+        .card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .button {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Asystent Prawny</h1>
+        <p>Ta strona to uproszczona wersja testowa aplikacji Asystent Prawny.</p>
+        
+        <div class="card">
+            <h2>Status kontenerów</h2>
+            <p>Frontend: <strong>Działa</strong></p>
+            <p>Backend: <span id="backendStatus">Sprawdzanie...</span></p>
+            <button class="button" onclick="checkBackendStatus()">Sprawdź połączenie z backendem</button>
+        </div>
+        
+        <div class="card">
+            <h2>Informacje o środowisku</h2>
+            <p>Ta instancja działa w środowisku testowym przy użyciu kontenerów Docker.</p>
+            <p>Usługi:</p>
+            <ul>
+                <li>Frontend (Nginx)</li>
+                <li>Backend (FastAPI)</li>
+                <li>Baza danych (PostgreSQL)</li>
+                <li>Składowanie plików (MinIO)</li>
+                <li>Wyszukiwanie (Elasticsearch)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function checkBackendStatus() {
+            const statusElement = document.getElementById('backendStatus');
+            statusElement.textContent = 'Łączenie...';
+            
+            fetch('/api/')
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Błąd połączenia z backendem');
+                })
+                .then(data => {
+                    statusElement.textContent = 'Działa - ' + data.message;
+                    statusElement.style.color = 'green';
+                })
+                .catch(error => {
+                    statusElement.textContent = 'Błąd połączenia';
+                    statusElement.style.color = 'red';
+                    console.error('Błąd:', error);
+                });
+        }
+        
+        // Sprawdź status po załadowaniu strony
+        window.addEventListener('load', checkBackendStatus);
+    </script>
+</body>
+</html>

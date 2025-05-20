@@ -1,19 +1,18 @@
 version: '3.8'
 
 services:
-  # Frontend
+  # Frontend - używamy gotowego obrazu Nginx
   frontend:
-    build: ./frontend
+    image: nginx:alpine
     ports:
-      - "3000:3000"
+      - "3000:80"
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend/public:/usr/share/nginx/html
     depends_on:
       - backend
-    environment:
-      - REACT_APP_API_URL=http://backend:8000
     networks:
       - app-network
-    volumes:
-      - frontend-node-modules:/app/node_modules
     restart: unless-stopped
 
   # Backend API
@@ -105,4 +104,3 @@ volumes:
   postgres-data:
   minio-data:
   elasticsearch-data:
-  frontend-node-modules:

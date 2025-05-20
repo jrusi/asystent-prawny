@@ -1,20 +1,23 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-// Prosty komponent bez zależności od React Router czy Material UI
-const App = () => {
+// Bardzo prosty komponent bez żadnych zależności
+function App() {
   return (
-    <div style={{ padding: '20px', textAlign: 'center' }}>
+    <div style={{
+      textAlign: 'center',
+      marginTop: '50px',
+      fontFamily: 'Arial, sans-serif'
+    }}>
       <h1>Asystent Prawny</h1>
-      <p>Aplikacja została prawidłowo załadowana!</p>
+      <p>Aplikacja jest załadowana poprawnie!</p>
+      <p style={{ color: 'blue' }}>To jest tekst testowy, który powinien być widoczny.</p>
     </div>
   );
-};
+}
 
-// Użyj tradycyjnej metody renderowania, która jest bardziej kompatybilna
+// Używamy starszej metody renderowania (kompatybilnej z React 17 i wcześniejszymi)
 ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+  <App />,
   document.getElementById('root')
 );

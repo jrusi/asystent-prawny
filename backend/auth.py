@@ -7,6 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 import models
+import schemas
 from database import get_db
 import os
 
@@ -61,3 +62,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     
     return user
+
+
+async def get_current_active_user(current_user: models.User = Depends(get_current_user)):
+    """Sprawdzanie czy użytkownik jest aktywny"""
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Nieaktywny użytkownik")
+    return current_user

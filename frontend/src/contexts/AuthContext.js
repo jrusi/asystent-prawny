@@ -1,141 +1,136 @@
+// frontend/src/contexts/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
-// Adres API
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const AuthContext = createContext(null);
 
-// Utworzenie kontekstu
-const AuthContext = createContext();
-
-// Hook do używania kontekstu
-export function useAuth() {
+export const useAuth = () => {
   return useContext(AuthContext);
-}
+};
 
-// Provider kontekstu
-export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Funkcja do logowania
+  // Sprawdzenie czy użytkownik jest zalogowany przy ładowaniu aplikacji
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        
+        if (token) {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          const response = await axios.get('/api/auth/me');
+          
+          if (response.status === 200) {
+            setUser(response.data);
+            setIsAuthenticated(true);
+          } else {
+            // Token wygasł lub jest nieprawidłowy
+            logout();
+          }
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
+
+  // Funkcja logowania
   const login = async (email, password) => {
+    setError(null);
+    
     try {
-      // Przygotowanie danych do formularza
-      const formData = new FormData();
-      formData.append('username', email);
-      formData.append('password', password);
-
-      // Wysłanie żądania
-      const response = await axios.post(`${API_URL}/token`, formData);
+      const response = await axios.post('/api/auth/login', { email, password });
       
-      // Zapisanie tokenu w localStorage
-      localStorage.setItem('token', response.data.access_token);
-      
-      // Pobranie danych użytkownika
-      await getUserProfile();
-      
-      return true;
+      if (response.status === 200 && response.data.token) {
+        const { token, user } = response.data;
+        
+        // Zapisz token w localStorage
+        localStorage.setItem('auth_token', token);
+        
+        // Ustaw token w nagłówkach axios
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Zaktualizuj stan
+        setUser(user);
+        setIsAuthenticated(true);
+        
+        return true;
+      } else {
+        throw new Error(response.data.message || 'Logowanie nie powiodło się');
+      }
     } catch (error) {
-      console.error('Błąd logowania:', error);
-      setError(error.response?.data?.detail || 'Nieprawidłowy email lub hasło');
+      setError(error.response?.data?.message || error.message || 'Błąd podczas logowania');
       return false;
     }
   };
 
-  // Funkcja do rejestracji
-  const register = async (username, email, password) => {
+  // Funkcja rejestracji
+  const register = async (userData) => {
+    setError(null);
+    
     try {
-      await axios.post(`${API_URL}/users/`, {
-        username,
-        email,
-        password
-      });
+      const response = await axios.post('/api/auth/register', userData);
       
-      return true;
+      if (response.status === 201) {
+        return true;
+      } else {
+        throw new Error(response.data.message || 'Rejestracja nie powiodła się');
+      }
     } catch (error) {
-      console.error('Błąd rejestracji:', error);
-      setError(error.response?.data?.detail || 'Nie udało się zarejestrować');
+      setError(error.response?.data?.message || error.message || 'Błąd podczas rejestracji');
       return false;
     }
   };
 
-  // Funkcja do wylogowywania
+  // Funkcja wylogowania
   const logout = () => {
-    localStorage.removeItem('token');
-    setCurrentUser(null);
+    // Usuń token z localStorage
+    localStorage.removeItem('auth_token');
+    
+    // Usuń token z nagłówków axios
+    delete axios.defaults.headers.common['Authorization'];
+    
+    // Zresetuj stan
+    setUser(null);
     setIsAuthenticated(false);
   };
 
-  // Funkcja do pobierania profilu użytkownika
-  const getUserProfile = async () => {
+  // Funkcja resetowania hasła
+  const resetPassword = async (email) => {
+    setError(null);
+    
     try {
-      const token = localStorage.getItem('token');
+      const response = await axios.post('/api/auth/reset-password', { email });
       
-      if (!token) {
-        setIsAuthenticated(false);
-        setCurrentUser(null);
-        setLoading(false);
-        return;
+      if (response.status === 200) {
+        return true;
+      } else {
+        throw new Error(response.data.message || 'Resetowanie hasła nie powiodło się');
       }
-      
-      const response = await axios.get(`${API_URL}/users/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      setCurrentUser(response.data);
-      setIsAuthenticated(true);
-      setError(null);
     } catch (error) {
-      console.error('Błąd pobierania profilu:', error);
-      setCurrentUser(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem('token');
-    } finally {
-      setLoading(false);
+      setError(error.response?.data?.message || error.message || 'Błąd podczas resetowania hasła');
+      return false;
     }
   };
 
-  // Konfiguracja interceptora dla żądań
-  useEffect(() => {
-    const interceptor = axios.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('token');
-        
-        if (token) {
-          config.headers['Authorization'] = `Bearer ${token}`;
-        }
-        
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
-    
-    return () => {
-      axios.interceptors.request.eject(interceptor);
-    };
-  }, []);
-
-  // Pobranie danych użytkownika przy pierwszym renderowaniu
-  useEffect(() => {
-    getUserProfile();
-  }, []);
-
-  // Wartości kontekstu
   const value = {
-    currentUser,
+    user,
     isAuthenticated,
     loading,
     error,
     login,
     register,
     logout,
-    getUserProfile
+    resetPassword
   };
 
   return (
@@ -143,4 +138,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
+};

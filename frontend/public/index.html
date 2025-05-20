@@ -396,10 +396,14 @@
             
             detailsElement.innerHTML = '<p>Pobieranie informacji o usługach...</p>';
             
+            console.log('Wysyłanie zapytania do /api/check-services');
+            
             fetch('/api/check-services')
                 .then(response => {
+                    console.log('Odpowiedź /api/check-services:', response.status);
                     if (response.ok) {
                         return response.json().then(data => {
+                            console.log('Dane:', data);
                             detailsElement.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
                             
                             // Aktualizacja kart usług

@@ -1,225 +1,268 @@
-import requests
-import json
-from fastapi import HTTPException, status
-from typing import List, Dict, Any
-from datetime import datetime
-import time
-import random
+import httpx
+import logging
+from typing import List, Dict, Any, Optional, Union
+from urllib.parse import urljoin
+
+logger = logging.getLogger(__name__)
 
 class SAOSClient:
-    """Klient do komunikacji z API Systemem Analizy Orzeczeń Sądowych (SAOS)"""
+    """
+    Klient do komunikacji z API SAOS (System Analizy Orzeczeń Sądowych)
+    """
     
-    def __init__(self):
-        """Inicjalizacja klienta SAOS"""
-        self.base_url = "https://www.saos.org.pl/api"
-        self.api_version = "v1"
-        self.search_endpoint = f"{self.base_url}/{self.api_version}/search/judgments"
-        self.judgment_endpoint = f"{self.base_url}/{self.api_version}/judgments"
-        self.headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        }
+    BASE_URL = "https://www.saos.org.pl/api"
+    SEARCH_URL = f"{BASE_URL}/search/judgments"
     
-    def search_judgments(self, keywords: List[str], page_size: int = 10) -> List[Dict[str, Any]]:
+    def __init__(self, timeout: int = 30):
+        self.timeout = timeout
+        self.client = httpx.AsyncClient(timeout=timeout)
+    
+    async def __aenter__(self):
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.client.aclose()
+    
+    async def search_judgments(self, 
+                         query: str = None, 
+                         case_number: str = None,
+                         judge_name: str = None,
+                         court_type: str = None,  # "COMMON", "SUPREME", "CONSTITUTIONAL_TRIBUNAL"
+                         from_date: str = None,   # Format: "YYYY-MM-DD"
+                         to_date: str = None,     # Format: "YYYY-MM-DD"
+                         keywords: List[str] = None,
+                         legal_bases: List[str] = None,
+                         page_size: int = 20,
+                         page_number: int = 0) -> Dict[str, Any]:
         """
-        Wyszukiwanie orzeczeń w SAOS
+        Wyszukuje orzeczenia sądowe w SAOS na podstawie podanych kryteriów.
         
         Args:
-            keywords: Lista słów kluczowych do wyszukiwania
-            page_size: Liczba wyników na stronie
-        
+            query: Ogólne zapytanie
+            case_number: Numer sprawy
+            judge_name: Nazwisko sędziego
+            court_type: Typ sądu (COMMON, SUPREME, CONSTITUTIONAL_TRIBUNAL)
+            from_date: Data od (YYYY-MM-DD)
+            to_date: Data do (YYYY-MM-DD)
+            keywords: Lista słów kluczowych
+            legal_bases: Lista podstaw prawnych
+            page_size: Liczba wyników na stronę
+            page_number: Numer strony wyników
+            
         Returns:
-            Lista znalezionych orzeczeń
+            Dane odpowiedzi z API SAOS
         """
-        # W rzeczywistej implementacji, tutaj byłoby odpytanie API SAOS
-        # Poniżej mamy implementację symulacyjną, która zwraca przykładowe dane
-        
-        # Symulacja opóźnienia wyszukiwania
-        time.sleep(random.uniform(0.5, 1.5))
-        
-        # Przykładowe orzeczenia
-        example_judgments = [
-            {
-                "court_name": "Sąd Najwyższy",
-                "case_number": "III CZP 36/19",
-                "judgment_date": datetime(2020, 1, 15),
-                "content": """Sąd Najwyższy w składzie: (...)
-
-TEZA
-Sądem właściwym do nadania klauzuli wykonalności aktowi notarialnemu, w którym dłużnik poddał się egzekucji w trybie art. 777 § 1 pkt 5 k.p.c. i który spełnia wszystkie wymagania przewidziane tym przepisem, jest sąd rejonowy ogólnej właściwości dłużnika (art. 781 § 1 k.p.c.).
-
-UZASADNIENIE
-(...)
-                """,
-                "saos_id": "judgment-12345"
-            },
-            {
-                "court_name": "Naczelny Sąd Administracyjny",
-                "case_number": "II OSK: 1257/19",
-                "judgment_date": datetime(2020, 3, 5),
-                "content": """Naczelny Sąd Administracyjny w składzie: (...)
-
-UZASADNIENIE
-Zaskarżonym wyrokiem z dnia 6 lutego 2019 r. Wojewódzki Sąd Administracyjny w Warszawie oddalił skargę B.L. na decyzję Samorządowego Kolegium Odwoławczego w W. z dnia 12 lipca 2018 r. nr [...] w przedmiocie odmowy stwierdzenia nieważności decyzji.
-(...)
-                """,
-                "saos_id": "judgment-67890"
-            },
-            {
-                "court_name": "Sąd Apelacyjny w Warszawie",
-                "case_number": "V ACa 248/18",
-                "judgment_date": datetime(2019, 6, 20),
-                "content": """Sąd Apelacyjny w Warszawie V Wydział Cywilny w składzie: (...)
-
-TEZA
-Przyczyną spadku wartości nieruchomości obciążonej służebnością przesyłu są ograniczenia, które właściciel zobowiązany jest znosić w związku z korzystaniem z nieruchomości przez uprawniony podmiot oraz te, które wiążą się z posadowieniem urządzeń na nieruchomości.
-
-UZASADNIENIE
-(...)
-                """,
-                "saos_id": "judgment-24680"
-            },
-            {
-                "court_name": "Wojewódzki Sąd Administracyjny w Krakowie",
-                "case_number": "I SA/Kr 1234/19",
-                "judgment_date": datetime(2020, 2, 10),
-                "content": """Wojewódzki Sąd Administracyjny w Krakowie w składzie: (...)
-
-UZASADNIENIE
-Decyzją z dnia [...] Dyrektor Izby Administracji Skarbowej w K., po rozpatrzeniu odwołania skarżącej, utrzymał w mocy decyzję Naczelnika Urzędu Skarbowego w T. z dnia [...] określającą skarżącej zobowiązanie podatkowe w podatku od towarów i usług za poszczególne miesiące 2016 r.
-(...)
-                """,
-                "saos_id": "judgment-13579"
-            }
-        ]
-        
-        # Filtrowanie według słów kluczowych
-        filtered_judgments = []
-        for judgment in example_judgments:
-            for keyword in keywords:
-                if keyword.lower() in judgment["court_name"].lower() or \
-                   keyword.lower() in judgment["case_number"].lower() or \
-                   keyword.lower() in judgment["content"].lower():
-                    filtered_judgments.append(judgment)
-                    break
-        
-        # Jeśli nie znaleziono żadnych pasujących orzeczeń, zwróć wszystkie przykładowe
-        if not filtered_judgments:
-            return example_judgments
-        
-        return filtered_judgments
-    
-    def get_judgment_details(self, judgment_id: str) -> Dict[str, Any]:
-        """
-        Pobieranie szczegółów orzeczenia
-        
-        Args:
-            judgment_id: Identyfikator orzeczenia w SAOS
-        
-        Returns:
-            Szczegóły orzeczenia
-        """
-        # W rzeczywistej implementacji, tutaj byłoby odpytanie API SAOS
-        # Poniżej mamy implementację symulacyjną
-        
-        # Symulacja opóźnienia
-        time.sleep(random.uniform(0.5, 1.0))
-        
-        # Przykładowe szczegóły orzeczenia
-        judgment_details = {
-            "judgment-12345": {
-                "id": "judgment-12345",
-                "court_name": "Sąd Najwyższy",
-                "case_number": "III CZP 36/19",
-                "judgment_date": "2020-01-15",
-                "judges": [
-                    "Jan Kowalski",
-                    "Anna Nowak",
-                    "Piotr Wiśniewski"
-                ],
-                "content": """Sąd Najwyższy w składzie: (...)
-
-TEZA
-Sądem właściwym do nadania klauzuli wykonalności aktowi notarialnemu, w którym dłużnik poddał się egzekucji w trybie art. 777 § 1 pkt 5 k.p.c. i który spełnia wszystkie wymagania przewidziane tym przepisem, jest sąd rejonowy ogólnej właściwości dłużnika (art. 781 § 1 k.p.c.).
-
-UZASADNIENIE
-(...)
-                """,
-                "keywords": [
-                    "klauzula wykonalności",
-                    "akt notarialny",
-                    "właściwość sądu"
-                ]
-            },
-            "judgment-67890": {
-                "id": "judgment-67890",
-                "court_name": "Naczelny Sąd Administracyjny",
-                "case_number": "II OSK: 1257/19",
-                "judgment_date": "2020-03-05",
-                "judges": [
-                    "Maria Kowalczyk",
-                    "Tomasz Nowicki",
-                    "Agnieszka Dąbrowska"
-                ],
-                "content": """Naczelny Sąd Administracyjny w składzie: (...)
-
-UZASADNIENIE
-Zaskarżonym wyrokiem z dnia 6 lutego 2019 r. Wojewódzki Sąd Administracyjny w Warszawie oddalił skargę B.L. na decyzję Samorządowego Kolegium Odwoławczego w W. z dnia 12 lipca 2018 r. nr [...] w przedmiocie odmowy stwierdzenia nieważności decyzji.
-(...)
-                """,
-                "keywords": [
-                    "skarga kasacyjna",
-                    "postępowanie administracyjne",
-                    "stwierdzenie nieważności"
-                ]
-            }
+        params = {
+            "pageSize": page_size,
+            "pageNumber": page_number,
+            "sortingField": "JUDGMENT_DATE",
+            "sortingDirection": "DESC"
         }
         
-        if judgment_id in judgment_details:
-            return judgment_details[judgment_id]
+        if query:
+            params["all"] = query
+            
+        if case_number:
+            params["caseNumber"] = case_number
+            
+        if judge_name:
+            params["judgeName"] = judge_name
+            
+        if court_type:
+            params["courtType"] = court_type
+            
+        if from_date:
+            params["judgmentDateFrom"] = from_date
+            
+        if to_date:
+            params["judgmentDateTo"] = to_date
+            
+        if keywords:
+            for idx, keyword in enumerate(keywords):
+                params[f"keyword[{idx}]"] = keyword
+                
+        if legal_bases:
+            for idx, legal_base in enumerate(legal_bases):
+                params[f"legalBase[{idx}]"] = legal_base
         
-        # Jeśli nie znaleziono orzeczenia o podanym ID, zwróć błąd
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Nie znaleziono orzeczenia o identyfikatorze {judgment_id}"
+        try:
+            response = await self.client.get(self.SEARCH_URL, params=params)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error: {e}")
+            return {"items": [], "totalResults": 0}
+        except httpx.RequestError as e:
+            logger.error(f"Request error: {e}")
+            return {"items": [], "totalResults": 0}
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            return {"items": [], "totalResults": 0}
+    
+    async def get_judgment_details(self, judgment_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Pobiera szczegóły orzeczenia sądowego na podstawie jego ID.
+        
+        Args:
+            judgment_id: Identyfikator orzeczenia
+            
+        Returns:
+            Słownik z danymi orzeczenia lub None w przypadku błędu
+        """
+        try:
+            response = await self.client.get(f"{self.BASE_URL}/judgments/{judgment_id}")
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error: {e}")
+            return None
+        except httpx.RequestError as e:
+            logger.error(f"Request error: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            return None
+    
+    async def find_similar_judgments(self, 
+                              case_text: str, 
+                              keywords: List[str] = None, 
+                              max_results: int = 10) -> List[Dict[str, Any]]:
+        """
+        Wyszukuje orzeczenia podobne do podanego tekstu sprawy.
+        
+        Args:
+            case_text: Tekst sprawy
+            keywords: Lista słów kluczowych
+            max_results: Maksymalna liczba wyników
+            
+        Returns:
+            Lista podobnych orzeczeń
+        """
+        # Ekstrakcja słów kluczowych z tekstu sprawy
+        extracted_keywords = await self._extract_keywords_from_text(case_text)
+        
+        # Połączenie z dostarczonymi słowami kluczowymi
+        all_keywords = extracted_keywords
+        if keywords:
+            all_keywords.extend(keywords)
+            # Usuń duplikaty
+            all_keywords = list(set(all_keywords))
+        
+        # Wyszukiwanie orzeczeń na podstawie słów kluczowych
+        search_results = await self.search_judgments(
+            keywords=all_keywords,
+            page_size=max_results
         )
+        
+        return search_results.get("items", [])
     
-    def get_recent_judgments(self, limit: int = 5) -> List[Dict[str, Any]]:
+    async def _extract_keywords_from_text(self, text: str) -> List[str]:
         """
-        Pobieranie najnowszych orzeczeń
+        Ekstrahuje słowa kluczowe z tekstu.
         
         Args:
-            limit: Maksymalna liczba orzeczeń do pobrania
-        
+            text: Tekst do analizy
+            
         Returns:
-            Lista najnowszych orzeczeń
+            Lista słów kluczowych
         """
-        # Symulacja opóźnienia
-        time.sleep(random.uniform(0.5, 1.0))
+        # Uproszczona implementacja - w rzeczywistości można użyć bardziej 
+        # zaawansowanych algorytmów NLP
+        import re
+        from collections import Counter
         
-        # Przykładowe najnowsze orzeczenia
-        recent_judgments = [
-            {
-                "court_name": "Sąd Najwyższy",
-                "case_number": "III CZP 42/20",
-                "judgment_date": datetime(2020, 5, 10),
-                "content": "Skrócona treść orzeczenia...",
-                "saos_id": "judgment-54321"
-            },
-            {
-                "court_name": "Naczelny Sąd Administracyjny",
-                "case_number": "II OSK: 3265/19",
-                "judgment_date": datetime(2020, 5, 8),
-                "content": "Skrócona treść orzeczenia...",
-                "saos_id": "judgment-98765"
-            },
-            {
-                "court_name": "Sąd Apelacyjny w Warszawie",
-                "case_number": "V ACa 537/19",
-                "judgment_date": datetime(2020, 5, 5),
-                "content": "Skrócona treść orzeczenia...",
-                "saos_id": "judgment-24681"
-            }
+        # Lista stop words dla języka polskiego (skrócona)
+        stop_words = set(['a', 'aby', 'ale', 'bez', 'bo', 'być', 'czy', 'dla', 'do', 
+                        'gdy', 'gdzie', 'i', 'jak', 'jest', 'jeszcze', 'jeśli', 
+                        'lub', 'ma', 'nie', 'o', 'od', 'po', 'pod', 'przy', 'się', 
+                        'tylko', 'w', 'we', 'z', 'za', 'ze'])
+        
+        # Zamieniamy na małe litery i usuwamy znaki specjalne
+        text = re.sub(r'[^\w\s]', ' ', text.lower())
+        
+        # Dzielimy na słowa
+        words = text.split()
+        
+        # Usuwamy stop words i krótkie słowa (mniej niż 3 znaki)
+        words = [word for word in words if word not in stop_words and len(word) > 3]
+        
+        # Liczymy częstość występowania słów
+        word_count = Counter(words)
+        
+        # Zwracamy najczęściej występujące słowa jako słowa kluczowe (max 10)
+        return [word for word, count in word_count.most_common(10)]
+    
+    async def extract_legal_bases(self, text: str) -> List[str]:
+        """
+        Ekstrahuje podstawy prawne z tekstu dokumentu.
+        
+        Args:
+            text: Tekst dokumentu
+            
+        Returns:
+            Lista znalezionych podstaw prawnych
+        """
+        # Uproszczona implementacja - w rzeczywistości należy użyć bardziej 
+        # zaawansowanych technik NLP lub wyrażeń regularnych
+        
+        # Przykładowy wzorzec dla polskich podstaw prawnych
+        import re
+        
+        patterns = [
+            # Wzorzec dla ustaw
+            r'ustaw[a-zęóąśłżźćń]* z dnia \d{1,2} [a-zęóąśłżźćń]+ \d{4} r\. [^\.]+',
+            # Wzorzec dla artykułów
+            r'art\.\s*\d+\s*(?:ust\.\s*\d+\s*)?(?:pkt\.\s*\d+\s*)?[^\.]+',
+            # Wzorzec dla paragrafów
+            r'§\s*\d+\s*(?:ust\.\s*\d+\s*)?(?:pkt\.\s*\d+\s*)?[^\.]+',
+            # Wzorzec dla kodeksów
+            r'kodeks[a-zęóąśłżźćń]*\s+[a-zęóąśłżźćń]+\s*(?:z dnia \d{1,2} [a-zęóąśłżźćń]+ \d{4} r\.)?',
         ]
         
-        return recent_judgments[:limit]
+        legal_bases = []
+        for pattern in patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            legal_bases.extend(matches)
+        
+        # Unikalne podstawy prawne
+        legal_bases = list(set(legal_bases))
+        
+        return legal_bases
+    
+    async def get_court_info(self, court_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Pobiera informacje o sądzie na podstawie ID.
+        
+        Args:
+            court_id: ID sądu
+            
+        Returns:
+            Dane o sądzie lub None w przypadku błędu
+        """
+        try:
+            response = await self.client.get(f"{self.BASE_URL}/courts/{court_id}")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting court info: {e}")
+            return None
+    
+    async def get_division_info(self, division_id: int, court_type: str) -> Optional[Dict[str, Any]]:
+        """
+        Pobiera informacje o wydziale sądu.
+        
+        Args:
+            division_id: ID wydziału
+            court_type: Typ sądu ("CC" dla sądów powszechnych, "SC" dla Sądu Najwyższego)
+            
+        Returns:
+            Dane o wydziale lub None w przypadku błędu
+        """
+        try:
+            endpoint = f"{self.BASE_URL}/ccDivisions/{division_id}" if court_type == "CC" else f"{self.BASE_URL}/scDivisions/{division_id}"
+            response = await self.client.get(endpoint)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting division info: {e}")
+            return None

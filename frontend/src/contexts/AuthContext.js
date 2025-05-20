@@ -1,105 +1,141 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-import jwtDecode from 'jwt-decode';
 
+// Adres API
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+// Utworzenie kontekstu
 const AuthContext = createContext();
 
-export const useAuth = () => useContext(AuthContext);
+// Hook do używania kontekstu
+export function useAuth() {
+  return useContext(AuthContext);
+}
 
-export const AuthProvider = ({ children }) => {
+// Provider kontekstu
+export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const initAuth = async () => {
-      if (token) {
-        try {
-          // Sprawdzenie ważności tokenu
-          const decodedToken = jwtDecode(token);
-          const currentTime = Date.now() / 1000;
-          
-          if (decodedToken.exp < currentTime) {
-            // Token wygasł
-            logout();
-          } else {
-            // Ustawienie tokenu w nagłówkach Axios
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            
-            // Pobranie informacji o użytkowniku
-            const response = await axios.get('/users/me/');
-            setCurrentUser(response.data);
-          }
-        } catch (error) {
-          console.error('Błąd podczas inicjalizacji autoryzacji:', error);
-          logout();
-        }
-      }
-      setLoading(false);
-    };
-
-    initAuth();
-  }, [token]);
-
+  // Funkcja do logowania
   const login = async (email, password) => {
     try {
-      const response = await axios.post('/token', new URLSearchParams({
-        username: email,
-        password: password
-      }), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      });
+      // Przygotowanie danych do formularza
+      const formData = new FormData();
+      formData.append('username', email);
+      formData.append('password', password);
 
-      const { access_token } = response.data;
-      localStorage.setItem('token', access_token);
-      setToken(access_token);
+      // Wysłanie żądania
+      const response = await axios.post(`${API_URL}/token`, formData);
       
-      // Ustawienie tokenu w nagłówkach Axios
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      // Zapisanie tokenu w localStorage
+      localStorage.setItem('token', response.data.access_token);
       
-      // Pobranie informacji o użytkowniku
-      const userResponse = await axios.get('/users/me/');
-      setCurrentUser(userResponse.data);
+      // Pobranie danych użytkownika
+      await getUserProfile();
       
       return true;
     } catch (error) {
       console.error('Błąd logowania:', error);
+      setError(error.response?.data?.detail || 'Nieprawidłowy email lub hasło');
       return false;
     }
   };
 
-  const register = async (email, password, fullName) => {
+  // Funkcja do rejestracji
+  const register = async (username, email, password) => {
     try {
-      await axios.post('/users/', {
+      await axios.post(`${API_URL}/users/`, {
+        username,
         email,
-        password,
-        full_name: fullName
+        password
       });
       
-      // Po rejestracji automatycznie logujemy
-      return await login(email, password);
+      return true;
     } catch (error) {
       console.error('Błąd rejestracji:', error);
+      setError(error.response?.data?.detail || 'Nie udało się zarejestrować');
       return false;
     }
   };
 
+  // Funkcja do wylogowywania
   const logout = () => {
     localStorage.removeItem('token');
-    setToken(null);
     setCurrentUser(null);
-    delete axios.defaults.headers.common['Authorization'];
+    setIsAuthenticated(false);
   };
 
+  // Funkcja do pobierania profilu użytkownika
+  const getUserProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+        setLoading(false);
+        return;
+      }
+      
+      const response = await axios.get(`${API_URL}/users/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      setCurrentUser(response.data);
+      setIsAuthenticated(true);
+      setError(null);
+    } catch (error) {
+      console.error('Błąd pobierania profilu:', error);
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('token');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Konfiguracja interceptora dla żądań
+  useEffect(() => {
+    const interceptor = axios.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('token');
+        
+        if (token) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+    
+    return () => {
+      axios.interceptors.request.eject(interceptor);
+    };
+  }, []);
+
+  // Pobranie danych użytkownika przy pierwszym renderowaniu
+  useEffect(() => {
+    getUserProfile();
+  }, []);
+
+  // Wartości kontekstu
   const value = {
     currentUser,
-    isAuthenticated: !!currentUser,
+    isAuthenticated,
     loading,
+    error,
     login,
     register,
-    logout
+    logout,
+    getUserProfile
   };
 
   return (
@@ -107,4 +143,4 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
+}

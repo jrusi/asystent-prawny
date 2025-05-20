@@ -8,8 +8,12 @@ import os
 from database import get_db, engine
 import models
 
-# Tworzenie tabel w bazie danych
-models.Base.metadata.create_all(bind=engine)
+# Tworzenie tabel w bazie danych (próba)
+try:
+    models.Base.metadata.create_all(bind=engine)
+    print("Tabele zostały utworzone pomyślnie")
+except Exception as e:
+    print(f"Błąd podczas tworzenia tabel: {e}")
 
 app = FastAPI(title="Asystent Prawny")
 
@@ -47,7 +51,7 @@ async def health_check():
 async def check_services(db: Session = Depends(get_db)):
     """Sprawdzenie stanu połączeń z usługami"""
     services_status = {
-        "database": "Błąd",
+        "database": "Nie sprawdzono",
         "authentication": "Nie sprawdzono"
     }
     
@@ -61,8 +65,8 @@ async def check_services(db: Session = Depends(get_db)):
         try:
             users_count = db.query(models.User).count()
             services_status["authentication"] = "Działa"
-        except:
-            services_status["authentication"] = "Tabela nie istnieje"
+        except Exception as e:
+            services_status["authentication"] = f"Błąd: {str(e)}"
     except Exception as e:
         services_status["database"] = f"Błąd: {str(e)}"
     

@@ -1,47 +1,89 @@
-// frontend/src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-// Komponenty stron
+// Komponenty układu
+import MainLayout from './layouts/MainLayout';
+import LoginLayout from './layouts/LoginLayout';
+
+// Strony
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import CaseView from './pages/CaseView';
-import CaseList from './pages/CaseList';
+import CasesList from './pages/CasesList';
+import CaseDetails from './pages/CaseDetails';
 import DocumentView from './pages/DocumentView';
-import DocumentList from './pages/DocumentList';
-import Profile from './pages/Profile';
-import NotFound from './pages/NotFound';
-import PasswordReset from './pages/PasswordReset';
 
-// Komponenty layoutu
-import MainLayout from './layouts/MainLayout';
-import AuthLayout from './layouts/AuthLayout';
-
-// Kontekst autoryzacji
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-
-// Prywatna ścieżka, która wymaga zalogowania
-const PrivateRoute = ({ element }) => {
-  const { isAuthenticated } = useAuth();
-  
-  return isAuthenticated ? element : <Navigate to="/login" />;
-};
-
-// Motyw aplikacji
+// Utworzenie tematu
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#2196f3',
+      main: '#1976d2',
     },
     secondary: {
-      main: '#f50057',
+      main: '#dc004e',
+    },
+    background: {
+      default: '#f5f5f5',
+      paper: '#ffffff',
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h1: {
+      fontSize: '2.5rem',
+      fontWeight: 500,
+    },
+    h2: {
+      fontSize: '2rem',
+      fontWeight: 500,
+    },
+    h3: {
+      fontSize: '1.75rem',
+      fontWeight: 500,
+    },
+    h4: {
+      fontSize: '1.5rem',
+      fontWeight: 500,
+    },
+    h5: {
+      fontSize: '1.25rem',
+      fontWeight: 500,
+    },
+    h6: {
+      fontSize: '1rem',
+      fontWeight: 500,
+    },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+        },
+      },
     },
   },
 });
 
+// Komponent zabezpieczający ścieżki
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <div>Ładowanie...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  return children;
+};
+
+// Główny komponent aplikacji
 function App() {
   return (
     <ThemeProvider theme={theme}>
@@ -49,26 +91,18 @@ function App() {
       <AuthProvider>
         <Router>
           <Routes>
-            {/* Ścieżki autoryzacji */}
-            <Route element={<AuthLayout />}>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/password-reset" element={<PasswordReset />} />
-            </Route>
+            {/* Strony publiczne */}
+            <Route path="/login" element={<LoginLayout><Login /></LoginLayout>} />
+            <Route path="/register" element={<LoginLayout><Register /></LoginLayout>} />
             
-            {/* Ścieżki wymagające zalogowania */}
-            <Route element={<MainLayout />}>
-              <Route path="/" element={<Navigate to="/dashboard" />} />
-              <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
-              <Route path="/cases" element={<PrivateRoute element={<CaseList />} />} />
-              <Route path="/cases/:caseId" element={<PrivateRoute element={<CaseView />} />} />
-              <Route path="/documents" element={<PrivateRoute element={<DocumentList />} />} />
-              <Route path="/documents/:documentId" element={<PrivateRoute element={<DocumentView />} />} />
-              <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
-            </Route>
+            {/* Strony chronione */}
+            <Route path="/" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+            <Route path="/cases" element={<ProtectedRoute><MainLayout><CasesList /></MainLayout></ProtectedRoute>} />
+            <Route path="/cases/:caseId" element={<ProtectedRoute><MainLayout><CaseDetails /></MainLayout></ProtectedRoute>} />
+            <Route path="/documents/:documentId" element={<ProtectedRoute><MainLayout><DocumentView /></MainLayout></ProtectedRoute>} />
             
-            {/* Strona 404 */}
-            <Route path="*" element={<NotFound />} />
+            {/* Przekierowanie dla nieznanych ścieżek */}
+            <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Router>
       </AuthProvider>

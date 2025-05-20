@@ -1,258 +1,270 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 import {
-  Box,
   Typography,
-  Grid,
+  Box,
   Paper,
+  Grid,
   Button,
+  Card,
+  CardContent,
+  CardActions,
   Divider,
   List,
   ListItem,
   ListItemText,
-  ListItemAvatar,
-  Avatar
+  ListItemIcon,
+  CircularProgress,
+  Alert
 } from '@mui/material';
-import {
-  Folder as FolderIcon,
-  Description as DescriptionIcon,
-  Gavel as GavelIcon,
-  Add as AddIcon
-} from '@mui/icons-material';
-import { useAuth } from '../contexts/AuthContext';
-
-// Adres API
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+import FolderIcon from '@mui/icons-material/Folder';
+import AddIcon from '@mui/icons-material/Add';
+import GavelIcon from '@mui/icons-material/Gavel';
+import DescriptionIcon from '@mui/icons-material/Description';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
-  const navigate = useNavigate();
-  
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalCases: 0,
-    totalDocuments: 0,
-    totalLegalActs: 0,
-    totalJudgments: 0
-  });
-  const [recentCases, setRecentCases] = useState([]);
+  const [error, setError] = useState('');
+  const [cases, setCases] = useState([]);
+  const [recentDocuments, setRecentDocuments] = useState([]);
   
-  // Pobieranie danych
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Pobieranie spraw
-        const casesResponse = await axios.get(`${API_URL}/cases/`);
-        const cases = casesResponse.data || [];
+        // Pobieranie listy spraw
+        const casesResponse = await axios.get('/cases/');
+        setCases(casesResponse.data);
         
-        // Obliczanie statystyk
-        let documents = 0;
-        let legalActs = 0;
-        let judgments = 0;
+        // Tutaj moglibyśmy pobierać najnowsze dokumenty, ale dla uproszczenia
+        // użyjemy przykładowych danych
+        setRecentDocuments([
+          {
+            id: 1,
+            filename: 'pozew.pdf',
+            document_type: 'pozew',
+            created_at: new Date(),
+            case_id: casesResponse.data[0]?.id || 1
+          },
+          {
+            id: 2,
+            filename: 'odpowiedz_na_pozew.pdf',
+            document_type: 'odpowiedź na pozew',
+            created_at: new Date(),
+            case_id: casesResponse.data[0]?.id || 1
+          }
+        ]);
         
-        cases.forEach(c => {
-          documents += c.documents ? c.documents.length : 0;
-          legalActs += c.legal_acts ? c.legal_acts.length : 0;
-          judgments += c.judgments ? c.judgments.length : 0;
-        });
-        
-        setStats({
-          totalCases: cases.length,
-          totalDocuments: documents,
-          totalLegalActs: legalActs,
-          totalJudgments: judgments
-        });
-        
-        // Pobieranie najnowszych spraw (maksymalnie 5)
-        setRecentCases(cases.slice(0, 5));
-      } catch (error) {
-        console.error('Błąd pobierania danych:', error);
-      } finally {
+        setLoading(false);
+      } catch (err) {
+        console.error('Błąd pobierania danych:', err);
+        setError('Wystąpił błąd podczas pobierania danych. Spróbuj ponownie później.');
         setLoading(false);
       }
     };
     
     fetchData();
   }, []);
-  
-  // Obsługa tworzenia nowej sprawy
-  const handleCreateCase = () => {
-    navigate('/cases/new');
-  };
-  
-  // Obsługa przejścia do sprawy
-  const handleCaseClick = (caseId) => {
-    navigate(`/cases/${caseId}`);
-  };
-  
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box>
-      {/* Powitanie */}
-      <Box mb={4}>
-        <Typography variant="h4" gutterBottom>
-          Witaj, {currentUser?.username || 'Użytkowniku'}!
-        </Typography>
-        <Typography variant="body1" color="textSecondary">
-          Oto przegląd Twoich spraw prawnych i dokumentów.
-        </Typography>
-      </Box>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Panel główny
+      </Typography>
       
-      {/* Statystyki */}
-      <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper
-            sx={{
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              bgcolor: 'primary.light',
-              color: 'white',
-            }}
-          >
-            <Avatar sx={{ bgcolor: 'primary.dark', width: 56, height: 56, mb: 1 }}>
-              <FolderIcon fontSize="large" />
-            </Avatar>
-            <Typography component="h2" variant="h5">
-              {stats.totalCases}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      
+      <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+        Witaj, {currentUser.full_name}!
+      </Typography>
+      
+      <Grid container spacing={3} sx={{ mt: 1 }}>
+        {/* Podsumowanie spraw */}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Moje sprawy
             </Typography>
-            <Typography variant="body2">Sprawy</Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            {cases.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="body1" gutterBottom>
+                  Nie masz jeszcze żadnych spraw.
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  component={RouterLink}
+                  to="/cases/new"
+                  sx={{ mt: 1 }}
+                >
+                  Utwórz nową sprawę
+                </Button>
+              </Box>
+            ) : (
+              <>
+                <List>
+                  {cases.slice(0, 5).map((caseItem) => (
+                    <ListItem
+                      key={caseItem.id}
+                      button
+                      component={RouterLink}
+                      to={`/cases/${caseItem.id}`}
+                    >
+                      <ListItemIcon>
+                        <FolderIcon />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={caseItem.title}
+                        secondary={`Utworzono: ${format(new Date(caseItem.created_at), 'Pp', { locale: pl })}`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+                
+                <Box sx={{ textAlign: 'center', mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    component={RouterLink}
+                    to="/cases"
+                  >
+                    Zobacz wszystkie sprawy
+                  </Button>
+                </Box>
+              </>
+            )}
           </Paper>
         </Grid>
         
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper
-            sx={{
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              bgcolor: 'secondary.light',
-              color: 'white',
-            }}
-          >
-            <Avatar sx={{ bgcolor: 'secondary.dark', width: 56, height: 56, mb: 1 }}>
-              <DescriptionIcon fontSize="large" />
-            </Avatar>
-            <Typography component="h2" variant="h5">
-              {stats.totalDocuments}
+        {/* Najnowsze dokumenty */}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Ostatnio dodane dokumenty
             </Typography>
-            <Typography variant="body2">Dokumenty</Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            {recentDocuments.length === 0 ? (
+              <Typography variant="body1" sx={{ py: 2, textAlign: 'center' }}>
+                Brak dokumentów
+              </Typography>
+            ) : (
+              <List>
+                {recentDocuments.map((doc) => (
+                  <ListItem key={doc.id}>
+                    <ListItemIcon>
+                      <DescriptionIcon />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={doc.filename}
+                      secondary={`${doc.document_type} • ${format(new Date(doc.created_at), 'Pp', { locale: pl })}`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
           </Paper>
         </Grid>
         
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper
-            sx={{
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              bgcolor: 'success.light',
-              color: 'white',
-            }}
-          >
-            <Avatar sx={{ bgcolor: 'success.dark', width: 56, height: 56, mb: 1 }}>
-              <GavelIcon fontSize="large" />
-            </Avatar>
-            <Typography component="h2" variant="h5">
-              {stats.totalLegalActs}
+        {/* Podpowiedzi */}
+        <Grid item xs={12}>
+          <Paper elevation={3} sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Szybkie akcje
             </Typography>
-            <Typography variant="body2">Akty prawne</Typography>
-          </Paper>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper
-            sx={{
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              bgcolor: 'info.light',
-              color: 'white',
-            }}
-          >
-            <Avatar sx={{ bgcolor: 'info.dark', width: 56, height: 56, mb: 1 }}>
-              <GavelIcon fontSize="large" />
-            </Avatar>
-            <Typography component="h2" variant="h5">
-              {stats.totalJudgments}
-            </Typography>
-            <Typography variant="body2">Orzeczenia</Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={4}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="h6" component="div">
+                      Utwórz nową sprawę
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Dodaj nową sprawę, aby zorganizować dokumenty i znaleźć odpowiednie akty prawne.
+                    </Typography>
+                  </CardContent>
+                  <CardActions>
+                    <Button 
+                      size="small" 
+                      startIcon={<AddIcon />}
+                      component={RouterLink}
+                      to="/cases/new"
+                    >
+                      Utwórz sprawę
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={4}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="h6" component="div">
+                      Przeglądaj akty prawne
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Wyszukaj i analizuj akty prawne związane z Twoją sprawą.
+                    </Typography>
+                  </CardContent>
+                  <CardActions>
+                    <Button 
+                      size="small" 
+                      startIcon={<GavelIcon />}
+                      component={RouterLink}
+                      to="/cases"
+                      disabled={cases.length === 0}
+                    >
+                      Przejdź do spraw
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={4}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="h6" component="div">
+                      Zadaj pytanie
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Zadaj pytanie dotyczące Twojej sprawy i uzyskaj odpowiedź.
+                    </Typography>
+                  </CardContent>
+                  <CardActions>
+                    <Button 
+                      size="small"
+                      component={RouterLink}
+                      to={cases.length > 0 ? `/cases/${cases[0].id}` : "/cases/new"}
+                      disabled={cases.length === 0}
+                    >
+                      {cases.length > 0 ? "Zadaj pytanie" : "Najpierw utwórz sprawę"}
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            </Grid>
           </Paper>
         </Grid>
       </Grid>
-      
-      {/* Ostatnie sprawy */}
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6">Ostatnie sprawy</Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateCase}
-          >
-            Nowa sprawa
-          </Button>
-        </Box>
-        
-        <Divider sx={{ mb: 2 }} />
-        
-        {loading ? (
-          <Typography>Ładowanie...</Typography>
-        ) : recentCases.length > 0 ? (
-          <List>
-            {recentCases.map((c) => (
-              <ListItem
-                key={c.id}
-                button
-                onClick={() => handleCaseClick(c.id)}
-                divider
-              >
-                <ListItemAvatar>
-                  <Avatar>
-                    <FolderIcon />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={c.title}
-                  secondary={
-                    <>
-                      {c.case_number && (
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          color="textPrimary"
-                        >
-                          {c.case_number} - 
-                        </Typography>
-                      )}
-                      {" "}
-                      {c.description
-                        ? c.description.length > 100
-                          ? `${c.description.substring(0, 100)}...`
-                          : c.description
-                        : "Brak opisu"}
-                    </>
-                  }
-                />
-              </ListItem>
-            ))}
-          </List>
-        ) : (
-          <Typography>Nie masz jeszcze żadnych spraw</Typography>
-        )}
-        
-        {recentCases.length > 0 && (
-          <Box mt={2} display="flex" justifyContent="flex-end">
-            <Button onClick={() => navigate('/cases')}>
-              Zobacz wszystkie sprawy
-            </Button>
-          </Box>
-        )}
-      </Paper>
     </Box>
   );
 };

@@ -1,43 +1,12 @@
-# Framework FastAPI
-fastapi==0.104.1
+fastapi==0.103.1
 uvicorn==0.23.2
-pydantic==2.4.2
-pydantic-core==2.10.1
+sqlalchemy==2.0.20
+psycopg2-binary==2.9.7
 python-multipart==0.0.6
-email-validator==2.1.0.post1
-
-# Baza danych
-sqlalchemy==2.0.22
-psycopg2-binary==2.9.9
-alembic==1.12.1
-
-# Uwierzytelnianie
-passlib==1.7.4
 python-jose==3.3.0
-pyjwt==2.8.0
+passlib==1.7.4
 bcrypt==4.0.1
-
-# Klient HTTP
-httpx==0.25.1
-requests==2.31.0
-
-# Parsowanie i ekstrakcja tekstu
-PyPDF2==3.0.1
-PyMuPDF==1.23.5
-python-docx==1.0.1
-docx2txt==0.8
-pytesseract==0.3.10
-Pillow==10.0.1
-beautifulsoup4==4.12.2
-
-# Przechowywanie plików
-minio==7.1.17
-
-# Silnik wyszukiwania
-elasticsearch==7.17.9
-
-# Przetwarzanie języka naturalnego
-langchain==0.0.336
-langchain-openai==0.0.2.post1
-openai==1.3.5
-chromadb==0.4.18
+pydantic==2.3.0
+pydantic-extra-types==2.1.0
+email-validator==2.0.0
+python-dotenv==1.0.0

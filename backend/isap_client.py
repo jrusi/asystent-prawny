@@ -1,227 +1,171 @@
-import httpx
-import os
-import logging
-from urllib.parse import urlencode
-from typing import List, Dict, Any, Optional
+import requests
 from bs4 import BeautifulSoup
-
-logger = logging.getLogger(__name__)
+import re
+from fastapi import HTTPException, status
+from typing import List, Dict, Any
+import time
+import random
 
 class ISAPClient:
-    """
-    Klient do pobierania aktów prawnych z ISAP (Internetowy System Aktów Prawnych)
-    """
+    """Klient do komunikacji z Internetowym Systemem Aktów Prawnych (ISAP)"""
     
-    BASE_URL = "https://isap.sejm.gov.pl/isap.nsf"
-    SEARCH_URL = f"{BASE_URL}/Search.xsp"
+    def __init__(self):
+        """Inicjalizacja klienta ISAP"""
+        self.base_url = "https://isap.sejm.gov.pl"
+        self.search_url = f"{self.base_url}/isap.nsf/search.xsp"
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "pl,en-US;q=0.7,en;q=0.3",
+        }
     
-    def __init__(self, timeout: int = 30):
-        self.timeout = timeout
-        self.client = httpx.AsyncClient(timeout=timeout)
-    
-    async def __aenter__(self):
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.client.aclose()
-    
-    async def search_acts(self, query: str, year: Optional[int] = None, 
-                     document_type: Optional[str] = None, 
-                     max_results: int = 20) -> List[Dict[str, Any]]:
+    def search_acts(self, keywords: List[str]) -> List[Dict[str, Any]]:
         """
-        Wyszukuje akty prawne w ISAP na podstawie podanych kryteriów.
+        Wyszukiwanie aktów prawnych w ISAP
         
         Args:
-            query: Słowa kluczowe do wyszukania
-            year: Opcjonalnie rok publikacji
-            document_type: Opcjonalnie typ dokumentu (np. "ustawa", "rozporządzenie")
-            max_results: Maksymalna liczba wyników
-            
+            keywords: Lista słów kluczowych do wyszukiwania
+        
         Returns:
-            Lista słowników zawierających informacje o aktach prawnych
+            Lista znalezionych aktów prawnych
         """
-        params = {
-            "query": query,
-            "max_results": max_results
+        # W rzeczywistej implementacji tutaj byłoby wyszukiwanie przez ISAP API
+        # lub scraping strony wyszukiwania ISAP
+        # Poniżej mamy implementację symulacyjną, która zwraca przykładowe dane
+        
+        # Symulacja opóźnienia wyszukiwania
+        time.sleep(random.uniform(0.5, 1.5))
+        
+        # Przykładowe akty prawne
+        example_acts = [
+            {
+                "title": "Ustawa z dnia 17 listopada 1964 r. - Kodeks postępowania cywilnego",
+                "isap_id": "WDU19640430296",
+                "publication": "Dz.U. 1964 nr 43 poz. 296",
+                "year": 1964,
+                "content": "Art. 1. § 1. Kodeks postępowania cywilnego normuje postępowanie sądowe w sprawach ze stosunków z zakresu prawa cywilnego, rodzinnego i opiekuńczego oraz prawa pracy, jak również w sprawach z zakresu ubezpieczeń społecznych oraz w innych sprawach, do których przepisy tego Kodeksu stosuje się z mocy ustaw szczególnych (sprawy cywilne)."
+            },
+            {
+                "title": "Ustawa z dnia 23 kwietnia 1964 r. - Kodeks cywilny",
+                "isap_id": "WDU19640160093",
+                "publication": "Dz.U. 1964 nr 16 poz. 93",
+                "year": 1964,
+                "content": "Art. 1. Kodeks niniejszy reguluje stosunki cywilnoprawne między osobami fizycznymi i osobami prawnymi."
+            },
+            {
+                "title": "Ustawa z dnia 6 czerwca 1997 r. - Kodeks karny",
+                "isap_id": "WDU19970880553",
+                "publication": "Dz.U. 1997 nr 88 poz. 553",
+                "year": 1997,
+                "content": "Art. 1. § 1. Odpowiedzialności karnej podlega ten tylko, kto popełnia czyn zabroniony pod groźbą kary przez ustawę obowiązującą w czasie jego popełnienia."
+            },
+            {
+                "title": "Ustawa z dnia 6 czerwca 1997 r. - Kodeks postępowania karnego",
+                "isap_id": "WDU19970890555",
+                "publication": "Dz.U. 1997 nr 89 poz. 555",
+                "year": 1997,
+                "content": "Art. 1. § 1. Postępowanie karne w sprawach należących do właściwości sądów toczy się według przepisów niniejszego kodeksu."
+            },
+            {
+                "title": "Ustawa z dnia 26 czerwca 1974 r. - Kodeks pracy",
+                "isap_id": "WDU19740240141",
+                "publication": "Dz.U. 1974 nr 24 poz. 141",
+                "year": 1974,
+                "content": "Art. 1. Kodeks pracy określa prawa i obowiązki pracowników i pracodawców."
+            }
+        ]
+        
+        # Filtrowanie według słów kluczowych
+        filtered_acts = []
+        for act in example_acts:
+            for keyword in keywords:
+                if keyword.lower() in act["title"].lower() or keyword.lower() in act["content"].lower():
+                    filtered_acts.append(act)
+                    break
+        
+        # Jeśli nie znaleziono żadnych pasujących aktów, zwróć wszystkie przykładowe
+        if not filtered_acts:
+            return example_acts
+        
+        return filtered_acts
+    
+    def get_act_content(self, isap_id: str) -> str:
+        """
+        Pobieranie treści aktu prawnego
+        
+        Args:
+            isap_id: Identyfikator aktu prawnego w ISAP
+        
+        Returns:
+            Treść aktu prawnego
+        """
+        # W rzeczywistej implementacji tutaj byłoby pobieranie treści przez ISAP API
+        # lub scraping strony z treścią aktu prawnego
+        # Poniżej mamy implementację symulacyjną
+        
+        # Symulacja opóźnienia
+        time.sleep(random.uniform(1.0, 2.0))
+        
+        # Przykładowa treść dla wybranych aktów
+        example_contents = {
+            "WDU19640430296": """Ustawa z dnia 17 listopada 1964 r. - Kodeks postępowania cywilnego
+
+TYTUŁ WSTĘPNY. Przepisy ogólne
+
+Art. 1. § 1. Kodeks postępowania cywilnego normuje postępowanie sądowe w sprawach ze stosunków z zakresu prawa cywilnego, rodzinnego i opiekuńczego oraz prawa pracy, jak również w sprawach z zakresu ubezpieczeń społecznych oraz w innych sprawach, do których przepisy tego Kodeksu stosuje się z mocy ustaw szczególnych (sprawy cywilne).
+§ 2. Przepisy Kodeksu stosuje się także do postępowań w sprawach, do których przepisy innych ustaw nie stanowią inaczej.
+§ 3. Nie są rozpoznawane w postępowaniu sądowym sprawy cywilne, jeżeli przepisy szczególne przekazują je do właściwości innych organów.""",
+            "WDU19640160093": """Ustawa z dnia 23 kwietnia 1964 r. - Kodeks cywilny
+
+KSIĘGA PIERWSZA. CZĘŚĆ OGÓLNA
+
+TYTUŁ I. Przepisy wstępne
+
+Art. 1. Kodeks niniejszy reguluje stosunki cywilnoprawne między osobami fizycznymi i osobami prawnymi.
+
+Art. 2. Jeżeli ustawa nie stanowi inaczej, do osoby fizycznej wykonującej działalność gospodarczą stosuje się przepisy Kodeksu dotyczące przedsiębiorców.""",
         }
         
-        if year:
-            params["year"] = year
-            
-        if document_type:
-            params["document_type"] = document_type
+        # Jeśli znamy treść aktu, zwróć ją
+        if isap_id in example_contents:
+            return example_contents[isap_id]
         
-        try:
-            # Wykonanie zapytania do ISAP
-            response = await self.client.get(
-                self.SEARCH_URL,
-                params=params
-            )
-            response.raise_for_status()
-            
-            # Parsowanie HTML - w rzeczywistej implementacji należy dostosować 
-            # do aktualnej struktury strony ISAP
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            results = []
-            for item in soup.select('.search-result-item'):  # Selektor CSS trzeba dostosować
-                act = {
-                    'id': item.get('data-id', ''),
-                    'title': item.select_one('.title').text.strip(),
-                    'publication_date': item.select_one('.date').text.strip(),
-                    'document_type': item.select_one('.type').text.strip(),
-                    'url': self.BASE_URL + item.select_one('a')['href']
-                }
-                results.append(act)
-            
-            return results[:max_results]
-            
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error: {e}")
-            return []
-        except httpx.RequestError as e:
-            logger.error(f"Request error: {e}")
-            return []
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-            return []
+        # W przeciwnym przypadku zwróć ogólną informację
+        return f"Treść aktu prawnego o identyfikatorze {isap_id} w systemie ISAP."
     
-    async def get_act_details(self, act_id: str) -> Optional[Dict[str, Any]]:
+    def get_recent_acts(self, limit: int = 5) -> List[Dict[str, Any]]:
         """
-        Pobiera szczegóły aktu prawnego na podstawie jego ID.
+        Pobieranie najnowszych aktów prawnych
         
         Args:
-            act_id: Identyfikator aktu prawnego
-            
+            limit: Maksymalna liczba aktów do pobrania
+        
         Returns:
-            Słownik zawierający szczegóły aktu prawnego lub None w przypadku błędu
+            Lista najnowszych aktów prawnych
         """
-        try:
-            response = await self.client.get(
-                f"{self.BASE_URL}/DocDetails.xsp",
-                params={"id": act_id}
-            )
-            response.raise_for_status()
-            
-            # Parsowanie HTML
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Pobieranie metadanych - selektory trzeba dostosować do struktury strony
-            details = {
-                'id': act_id,
-                'title': soup.select_one('.title').text.strip(),
-                'publication_date': soup.select_one('.date').text.strip(),
-                'document_type': soup.select_one('.type').text.strip(),
-                'text': soup.select_one('.content').text.strip(),
-                'pdf_url': soup.select_one('.pdf-link')['href'],
-                'amendments': [a.text.strip() for a in soup.select('.amendments li')]
+        # W rzeczywistej implementacji tutaj byłoby pobieranie najnowszych aktów przez ISAP API
+        # lub scraping strony z najnowszymi aktami
+        # Poniżej mamy implementację symulacyjną
+        
+        # Symulacja opóźnienia
+        time.sleep(random.uniform(0.5, 1.0))
+        
+        # Przykładowe najnowsze akty
+        recent_acts = [
+            {
+                "title": "Ustawa z dnia 14 maja 2020 r. o zmianie niektórych ustaw w zakresie działań osłonowych w związku z rozprzestrzenianiem się wirusa SARS-CoV-2",
+                "isap_id": "WDU20200000875",
+                "publication": "Dz.U. 2020 poz. 875",
+                "year": 2020,
+                "content": "Art. 1. W ustawie z dnia 31 stycznia 1959 r. o cmentarzach i chowaniu zmarłych (Dz. U. z 2019 r. poz. 1473) wprowadza się następujące zmiany: (...)"
+            },
+            {
+                "title": "Ustawa z dnia 14 maja 2020 r. o zmianie ustawy o świadczeniach opieki zdrowotnej finansowanych ze środków publicznych oraz niektórych innych ustaw",
+                "isap_id": "WDU20200000945",
+                "publication": "Dz.U. 2020 poz. 945",
+                "year": 2020,
+                "content": "Art. 1. W ustawie z dnia 27 sierpnia 2004 r. o świadczeniach opieki zdrowotnej finansowanych ze środków publicznych (Dz. U. z 2019 r. poz. 1373, z późn. zm.) wprowadza się następujące zmiany: (...)"
             }
-            
-            return details
-            
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error: {e}")
-            return None
-        except httpx.RequestError as e:
-            logger.error(f"Request error: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-            return None
-    
-    async def extract_keywords_from_document(self, document_text: str) -> List[str]:
-        """
-        Ekstrahuje słowa kluczowe z dokumentu, które mogą być użyte do wyszukiwania 
-        odpowiednich aktów prawnych.
+        ]
         
-        Args:
-            document_text: Tekst dokumentu
-            
-        Returns:
-            Lista słów kluczowych
-        """
-        # Uproszczona implementacja - w rzeczywistości można użyć bardziej 
-        # zaawansowanych algorytmów NLP
-        # Przykładowo: Spacy, KeyBERT lub inne biblioteki do ekstrakcji słów kluczowych
-        
-        # Usuwamy znaki specjalne, dzielimy na słowa i wybieramy najczęstsze
-        import re
-        from collections import Counter
-        
-        # Lista stop words dla języka polskiego
-        stop_words = set(['a', 'aby', 'ach', 'acz', 'aczkolwiek', 'aj', 'albo', 'ale', 'ależ', 
-                         'ani', 'aż', 'bardziej', 'bardzo', 'bez', 'bo', 'bowiem', 'by', 
-                         'byli', 'bym', 'był', 'była', 'było', 'były', 'będzie', 'będą', 
-                         'cali', 'cała', 'cały', 'co', 'cokolwiek', 'coś', 'czasami', 
-                         'czasem', 'czemu', 'czy', 'czyli', 'daleko', 'dla', 'dlaczego', 
-                         'dlatego', 'do', 'dobrze', 'dokąd', 'dość', 'dużo', 'dwa', 
-                         'dwaj', 'dwie', 'dwoje', 'dziś', 'dzisiaj', 'gdy', 'gdyby', 
-                         'gdyż', 'gdzie', 'gdziekolwiek', 'gdzieś', 'go', 'i', 'ich', 
-                         'ile', 'im', 'inna', 'inne', 'inny', 'innych', 'iż', 'ja', 
-                         'jak', 'jakaś', 'jakby', 'jaki', 'jakichś', 'jakie', 'jakiś', 
-                         'jakiż', 'jakkolwiek', 'jako', 'jakoś', 'je', 'jeden', 'jedna', 
-                         'jedno', 'jednak', 'jednakże', 'jego', 'jej', 'jemu', 'jest', 
-                         'jestem', 'jeszcze', 'jeśli', 'jeżeli', 'już', 'ją', 'każdy', 
-                         'kiedy', 'kilka', 'kimś', 'kto', 'ktokolwiek', 'ktoś', 'która', 
-                         'które', 'którego', 'której', 'który', 'których', 'którym', 
-                         'którzy', 'ku', 'lat', 'lecz', 'lub', 'ma', 'mają', 'mam', 
-                         'mi', 'mimo', 'między', 'mną', 'mnie', 'mogą', 'moim', 'moja', 
-                         'moje', 'może', 'możliwe', 'można', 'mój', 'mu', 'musi', 'my', 
-                         'na', 'nad', 'nam', 'nami', 'nas', 'nasi', 'nasz', 'nasza', 
-                         'nasze', 'naszego', 'naszych', 'natomiast', 'natychmiast', 
-                         'nawet', 'nią', 'nic', 'nich', 'nie', 'niech', 'niego', 'niej', 
-                         'niemu', 'nigdy', 'nim', 'nimi', 'niż', 'no', 'o', 'obok', 
-                         'od', 'około', 'on', 'ona', 'one', 'oni', 'ono', 'oraz', 
-                         'oto', 'owszem', 'pan', 'pana', 'pani', 'po', 'pod', 'podczas', 
-                         'pomimo', 'ponad', 'ponieważ', 'powinien', 'powinna', 'powinni', 
-                         'powinno', 'poza', 'prawie', 'przecież', 'przed', 'przede', 
-                         'przedtem', 'przez', 'przy', 'roku', 'również', 'sam', 'sama', 
-                         'są', 'się', 'skąd', 'sobie', 'sobą', 'sposób', 'swoje', 'ta', 
-                         'tak', 'taka', 'taki', 'takie', 'także', 'tam', 'te', 'tego', 
-                         'tej', 'temu', 'ten', 'teraz', 'też', 'to', 'tobą', 'tobie', 
-                         'toteż', 'trzeba', 'tu', 'tutaj', 'twoi', 'twoim', 'twoja', 
-                         'twoje', 'twym', 'twój', 'ty', 'tych', 'tylko', 'tym', 'u', 
-                         'w', 'wam', 'wami', 'was', 'wasz', 'wasza', 'wasze', 'we', 
-                         'według', 'wiele', 'wielu', 'więc', 'więcej', 'wszyscy', 
-                         'wszystkich', 'wszystkie', 'wszystkim', 'wszystko', 'wtedy', 
-                         'www', 'wy', 'właśnie', 'z', 'za', 'zapewne', 'zawsze', 'ze', 
-                         'zł', 'znowu', 'znów', 'został', 'żaden', 'żadna', 'żadne', 
-                         'żadnych', 'że', 'żeby'])
-        
-        # Zamieniamy na małe litery i usuwamy znaki specjalne
-        text = re.sub(r'[^\w\s]', ' ', document_text.lower())
-        
-        # Dzielimy na słowa
-        words = text.split()
-        
-        # Usuwamy stop words i krótkie słowa (mniej niż 3 znaki)
-        words = [word for word in words if word not in stop_words and len(word) > 3]
-        
-        # Liczymy częstość występowania słów
-        word_count = Counter(words)
-        
-        # Zwracamy najczęściej występujące słowa jako słowa kluczowe (max 10)
-        return [word for word, count in word_count.most_common(10)]
-    
-    async def download_act_pdf(self, pdf_url: str, destination_path: str) -> bool:
-        """
-        Pobiera PDF aktu prawnego.
-        
-        Args:
-            pdf_url: URL do pliku PDF
-            destination_path: Ścieżka, gdzie zapisać plik
-            
-        Returns:
-            True jeśli pobieranie się powiodło, False w przeciwnym razie
-        """
-        try:
-            response = await self.client.get(pdf_url)
-            response.raise_for_status()
-            
-            with open(destination_path, 'wb') as f:
-                f.write(response.content)
-            
-            return True
-        except Exception as e:
-            logger.error(f"Error downloading PDF: {e}")
-            return False
+        return recent_acts[:limit]

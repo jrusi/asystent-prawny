@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <title>Test Aplikacji</title>
-</head>
-<body>
-  <div id="root"></div>
-
-  <script>
-    // Bezpośrednie dodanie treści do elementu root
-    document.getElementById('root').innerHTML = 
-      '<h1 style="color: blue; text-align: center;">Asystent Prawny</h1>' +
-      '<p style="text-align: center;">Ta treść jest dodana przez inline JavaScript!</p>';
-  </script>
-</body>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Asystent Prawny</title>
+  </head>
+  <body>
+    <noscript>Musisz włączyć JavaScript, aby korzystać z tej aplikacji.</noscript>
+    <div id="root"></div>
+    <!-- 
+      Pliki JavaScript będą automatycznie dodane przez webpack
+      podczas budowania aplikacji.
+    -->
+  </body>
 </html>

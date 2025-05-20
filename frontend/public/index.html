@@ -142,6 +142,27 @@
             color: #757575;
             font-size: 0.9em;
         }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .auth-info {
+            padding: 10px;
+            margin-top: 15px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -157,6 +178,7 @@
         
         <div class="tabs">
             <div class="tab active" data-tab="status">Status systemów</div>
+            <div class="tab" data-tab="auth">Uwierzytelnianie</div>
             <div class="tab" data-tab="api">Test API</div>
             <div class="tab" data-tab="info">Informacje</div>
         </div>
@@ -188,6 +210,66 @@
                 <button class="button" onclick="checkServiceDetails()">Sprawdź szczegóły usług</button>
                 <div id="serviceDetails" class="results">
                     <p>Kliknij przycisk, aby sprawdzić szczegóły usług.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="auth-tab" class="tab-content">
+            <div class="card">
+                <h2>Rejestracja użytkownika</h2>
+                <div class="form-group">
+                    <label for="registerEmail">Email:</label>
+                    <input type="email" id="registerEmail" placeholder="email@przykład.pl">
+                </div>
+                <div class="form-group">
+                    <label for="registerFullName">Imię i nazwisko:</label>
+                    <input type="text" id="registerFullName" placeholder="Jan Kowalski">
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Hasło:</label>
+                    <input type="password" id="registerPassword" placeholder="Minimum 6 znaków">
+                </div>
+                <button class="button" onclick="registerUser()">Zarejestruj</button>
+                <div id="registerResults" class="results">
+                    <p>Wypełnij formularz, aby zarejestrować użytkownika.</p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Logowanie</h2>
+                <div class="form-group">
+                    <label for="loginEmail">Email:</label>
+                    <input type="email" id="loginEmail" placeholder="email@przykład.pl">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Hasło:</label>
+                    <input type="password" id="loginPassword">
+                </div>
+                <button class="button" onclick="loginUser()">Zaloguj</button>
+                <div id="loginResults" class="results">
+                    <p>Wypełnij formularz, aby się zalogować.</p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Chronione endpointy</h2>
+                <p>Aby przetestować chronione endpointy, najpierw zaloguj się, aby uzyskać token.</p>
+                
+                <div id="authInfo" class="auth-info" style="display: none;">
+                    <p><strong>Status uwierzytelnienia:</strong> <span id="authStatus">Nie zalogowano</span></p>
+                    <p><strong>Token:</strong> <span id="authToken">Brak</span></p>
+                </div>
+                
+                <div class="endpoints">
+                    <div class="endpoint">/api/users/me/</div>
+                    <button class="button" onclick="testProtectedEndpoint('/api/users/me/')">Test</button>
+                    
+                    <div class="endpoint">/api/secure-data/</div>
+                    <button class="button" onclick="testProtectedEndpoint('/api/secure-data/')">Test</button>
+                </div>
+                
+                <div id="protectedResults" class="results">
+                    <p>Zaloguj się, aby przetestować chronione endpointy.</p>
                 </div>
             </div>
         </div>
@@ -266,6 +348,9 @@
     </div>
 
     <script>
+        // Stan uwierzytelnienia
+        let authToken = null;
+        
         // Funkcje obsługi zakładek
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -322,7 +407,7 @@
                             
                             for (const [service, status] of Object.entries(data.services)) {
                                 const statusClass = status === "Działa" ? "success" : 
-                                                    status === "Nie sprawdzono" ? "pending" : "error";
+                                                   status === "Nie sprawdzono" ? "pending" : "error";
                                 
                                 const serviceCard = document.createElement('div');
                                 serviceCard.className = 'service-card';
@@ -374,6 +459,169 @@
                 });
         }
         
+        // Funkcja rejestrująca użytkownika
+        function registerUser() {
+            const email = document.getElementById('registerEmail').value;
+            const fullName = document.getElementById('registerFullName').value;
+            const password = document.getElementById('registerPassword').value;
+            const resultsElement = document.getElementById('registerResults');
+            
+            if (!email || !fullName || !password) {
+                resultsElement.innerHTML = '<p class="status error">Wypełnij wszystkie pola formularza</p>';
+                return;
+            }
+            
+            resultsElement.innerHTML = '<p>Rejestracja użytkownika...</p>';
+            
+            fetch('/api/users/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: email,
+                    full_name: fullName,
+                    password: password
+                })
+            })
+            .then(response => {
+                const statusText = response.ok ? 'Sukces' : 'Błąd';
+                const statusClass = response.ok ? 'success' : 'error';
+                
+                return response.json()
+                    .then(data => {
+                        resultsElement.innerHTML = `
+                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                        
+                        if (response.ok) {
+                            // Automatycznie wypełnij dane logowania
+                            document.getElementById('loginEmail').value = email;
+                            document.getElementById('loginPassword').value = password;
+                            
+                            // Przejdź do sekcji logowania
+                            const loginCard = document.querySelector('.card:nth-child(2)');
+                            loginCard.scrollIntoView({ behavior: 'smooth' });
+                        }
+                    })
+                    .catch(e => {
+                        resultsElement.innerHTML = `
+                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
+                            <p>Treść odpowiedzi nie jest w formacie JSON</p>
+                        `;
+                    });
+            })
+            .catch(error => {
+                console.error('Błąd:', error);
+                resultsElement.innerHTML = `<pre>Błąd podczas rejestracji: ${error.message}</pre>`;
+            });
+        }
+        
+        // Funkcja logująca użytkownika
+        function loginUser() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const resultsElement = document.getElementById('loginResults');
+            
+            if (!email || !password) {
+                resultsElement.innerHTML = '<p class="status error">Wypełnij wszystkie pola formularza</p>';
+                return;
+            }
+            
+            resultsElement.innerHTML = '<p>Logowanie użytkownika...</p>';
+            
+            // Przygotowanie formdata
+            const formData = new URLSearchParams();
+            formData.append('username', email);
+            formData.append('password', password);
+            
+            fetch('/api/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: formData
+            })
+            .then(response => {
+                const statusText = response.ok ? 'Sukces' : 'Błąd';
+                const statusClass = response.ok ? 'success' : 'error';
+                
+                return response.json()
+                    .then(data => {
+                        resultsElement.innerHTML = `
+                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                        
+                        if (response.ok && data.access_token) {
+                            // Zapisz token
+                            authToken = data.access_token;
+                            
+                            // Aktualizuj informacje o uwierzytelnieniu
+                            document.getElementById('authInfo').style.display = 'block';
+                            document.getElementById('authStatus').textContent = 'Zalogowano';
+                            document.getElementById('authStatus').className = 'status success';
+                            document.getElementById('authToken').textContent = authToken.substring(0, 20) + '...';
+                            
+                            // Przejdź do sekcji chronionych endpointów
+                            const protectedCard = document.querySelector('.card:nth-child(3)');
+                            protectedCard.scrollIntoView({ behavior: 'smooth' });
+                        }
+                    })
+                    .catch(e => {
+                        resultsElement.innerHTML = `
+                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
+                            <p>Treść odpowiedzi nie jest w formacie JSON</p>
+                        `;
+                    });
+            })
+            .catch(error => {
+                console.error('Błąd:', error);
+                resultsElement.innerHTML = `<pre>Błąd podczas logowania: ${error.message}</pre>`;
+            });
+        }
+        
+        // Funkcja testująca chroniony endpoint
+        function testProtectedEndpoint(endpoint) {
+            const resultsElement = document.getElementById('protectedResults');
+            
+            if (!authToken) {
+                resultsElement.innerHTML = '<p class="status error">Najpierw zaloguj się, aby uzyskać token</p>';
+                return;
+            }
+            
+            resultsElement.innerHTML = `<p>Testowanie chronionego endpointu ${endpoint}...</p>`;
+            
+            fetch(endpoint, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            })
+            .then(response => {
+                const statusText = response.ok ? 'Sukces' : 'Błąd';
+                const statusClass = response.ok ? 'success' : 'error';
+                
+                return response.json()
+                    .then(data => {
+                        resultsElement.innerHTML = `
+                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                    })
+                    .catch(e => {
+                        resultsElement.innerHTML = `
+                            <p>Status: <span class="status ${statusClass}">${statusText} (${response.status})</span></p>
+                            <p>Treść odpowiedzi nie jest w formacie JSON</p>
+                        `;
+                    });
+            })
+            .catch(error => {
+                console.error('Błąd:', error);
+                resultsElement.innerHTML = `<pre>Błąd podczas testowania: ${error.message}</pre>`;
+            });
+        }
+        
         // Obsługa przycisku "Odśwież wszystko"
         document.getElementById('refreshAll').addEventListener('click', () => {
             checkBackendStatus();
@@ -385,7 +633,7 @@
             checkBackendStatus();
             // Symulowane inne usługi
             const servicesElement = document.getElementById('otherServices');
-            const services = ['database', 'minio', 'elasticsearch'];
+            const services = ['database', 'authentication'];
             
             services.forEach(service => {
                 const serviceCard = document.createElement('div');
@@ -396,6 +644,9 @@
                 `;
                 servicesElement.appendChild(serviceCard);
             });
+            
+            // Sprawdź usługi
+            checkServiceDetails();
         });
     </script>
 </body>

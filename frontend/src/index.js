@@ -1,11 +1,20 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
+import ReactDOM from 'react-dom';
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
+// Prosty komponent bez zależności od React Router czy Material UI
+const App = () => {
+  return (
+    <div style={{ padding: '20px', textAlign: 'center' }}>
+      <h1>Asystent Prawny</h1>
+      <p>Aplikacja została prawidłowo załadowana!</p>
+    </div>
+  );
+};
+
+// Użyj tradycyjnej metody renderowania, która jest bardziej kompatybilna
+ReactDOM.render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>
+  </React.StrictMode>,
+  document.getElementById('root')
 );

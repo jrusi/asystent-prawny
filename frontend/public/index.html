@@ -1,18 +1,16 @@
 <!DOCTYPE html>
-<html lang="pl">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="./favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Asystent Prawny - aplikacja do zarządzania dokumentami prawnymi"
-    />
-    <title>Asystent Prawny</title>
-  </head>
-  <body>
-    <noscript>Musisz włączyć JavaScript, aby uruchomić tę aplikację.</noscript>
-    <div id="root"></div>
-  </body>
+<html>
+<head>
+  <title>Test Aplikacji</title>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    // Bezpośrednie dodanie treści do elementu root
+    document.getElementById('root').innerHTML = 
+      '<h1 style="color: blue; text-align: center;">Asystent Prawny</h1>' +
+      '<p style="text-align: center;">Ta treść jest dodana przez inline JavaScript!</p>';
+  </script>
+</body>
 </html>

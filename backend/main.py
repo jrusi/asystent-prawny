@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from datetime import timedelta
 import os
 
@@ -182,8 +183,8 @@ async def check_services(db: Session = Depends(get_db)):
     
     # Sprawdzenie połączenia z bazą danych
     try:
-        # Prosta operacja do sprawdzenia połączenia
-        db.execute("SELECT 1").fetchone()
+        # Poprawione zapytanie z użyciem text()
+        db.execute(text("SELECT 1")).fetchone()
         services_status["database"] = "Działa"
         
         # Sprawdzenie czy tabela users istnieje

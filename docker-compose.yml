@@ -43,13 +43,6 @@ services:
       - app-network
     restart: unless-stopped
 
-networks:
-  app-network:
-    driver: bridge
-
-volumes:
-  postgres-data:
-
 # System plików
   minio:
     image: minio/minio

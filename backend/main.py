@@ -10,7 +10,7 @@ import os
 from database import get_db, engine
 import models
 import schemas
-from auth import create_access_token, get_current_user, get_current_active_user, get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
+from auth import create_access_token, get_current_active_user, get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
 
 # Tworzenie tabel w bazie danych
 try:

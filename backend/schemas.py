@@ -34,10 +34,6 @@ from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 
 # Schematy użytkownika
-class UserBase(BaseModel):
-    email: EmailStr
-    username: str
-
 class UserCreate(UserBase):
     password: str
 

@@ -6,7 +6,15 @@ python-multipart==0.0.6
 python-jose==3.3.0
 passlib==1.7.4
 bcrypt==4.0.1
+minio==7.1.15
+elasticsearch==8.9.0
 pydantic==2.3.0
 pydantic-extra-types==2.1.0
 email-validator==2.0.0
+requests==2.31.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+langchain==0.0.296
+openai==0.28.0
+tiktoken==0.5.1
 python-dotenv==1.0.0

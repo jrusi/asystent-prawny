@@ -35,6 +35,7 @@ class User(Base):
     
     # Relacje
     cases = relationship("Case", back_populates="owner")
+    cases = relationship("Case", back_populates="user")
 
 class Case(Base):
     """Model sprawy prawnej."""

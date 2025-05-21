@@ -29,12 +29,13 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    full_name = Column(String)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relacje
-    cases = relationship("Case", back_populates="owner")
+    cases = relationship("Case", back_populates="user")
 
 class Case(Base):
     """Model sprawy prawnej."""

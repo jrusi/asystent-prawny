@@ -7,10 +7,8 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: str
 
-
 class UserCreate(UserBase):
     password: str
-
 
 class User(UserBase):
     id: int

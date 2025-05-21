@@ -70,7 +70,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.post("/users/")
+@app.post("/users/", response_model=schemas.User)
 async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """Rejestracja nowego użytkownika"""
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
@@ -84,7 +84,11 @@ async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
     
+    # Utworzenie katalogu w MinIO dla nowego użytkownika
+    minio_client.create_user_bucket(str(db_user.id))
+    
     return db_user
+
 
 
 @app.get("/users/me/")

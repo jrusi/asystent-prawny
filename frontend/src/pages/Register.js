@@ -13,7 +13,6 @@ import {
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    username: '', // Dodane pole username
     email: '',
     full_name: '',
     password: '',
@@ -32,7 +31,7 @@ const Register = () => {
     e.preventDefault();
     
     // Walidacja
-    if (!formData.username || !formData.email || !formData.full_name || !formData.password || !formData.confirmPassword) {
+    if (!formData.email || !formData.full_name || !formData.password || !formData.confirmPassword) {
       setFormError('Proszę wypełnić wszystkie pola');
       return;
     }
@@ -49,7 +48,6 @@ const Register = () => {
     
     setFormError('');
     const success = await register({
-      username: formData.username, // Dodane pole username
       email: formData.email,
       full_name: formData.full_name,
       password: formData.password

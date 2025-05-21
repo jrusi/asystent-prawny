@@ -70,10 +70,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (username, email, password, fullName) => {
+  const register = async (email, password, fullName) => {
     try {
       await axios.post('/users/', {
-        username,
         email,
         password,
         full_name: fullName

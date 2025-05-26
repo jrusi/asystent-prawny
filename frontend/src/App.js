@@ -9,8 +9,6 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CaseDetail from './pages/CaseDetail';
 import CaseList from './pages/CaseList';
-import DocumentView from './pages/DocumentView';
-import DocumentList from './pages/DocumentList';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import PasswordReset from './pages/PasswordReset';
@@ -61,8 +59,6 @@ function App() {
               <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
               <Route path="/cases" element={<PrivateRoute element={<CaseList />} />} />
               <Route path="/cases/:caseId" element={<PrivateRoute element={<CaseDetail />} />} />
-              <Route path="/documents" element={<PrivateRoute element={<DocumentList />} />} />
-              <Route path="/documents/:documentId" element={<PrivateRoute element={<DocumentView />} />} />
               <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
             </Route>
             

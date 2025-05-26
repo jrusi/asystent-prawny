@@ -1,53 +1,79 @@
-// src/index.js
+// frontend/src/App.js
 import React from 'react';
-import ReactDOM from 'react-dom';
-import './index.css'; // Upewnij się, że ten plik istnieje
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 
-// Najprostszy komponent App
-function App() {
-  const [count, setCount] = React.useState(0);
+// Komponenty stron
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import CaseView from './pages/CaseView';
+import CaseList from './pages/CaseList';
+import DocumentView from './pages/DocumentView';
+import DocumentList from './pages/DocumentList';
+import Profile from './pages/Profile';
+import NotFound from './pages/NotFound';
+import PasswordReset from './pages/PasswordReset';
+
+// Komponenty layoutu
+import MainLayout from './layouts/MainLayout';
+import AuthLayout from './layouts/AuthLayout';
+
+// Kontekst autoryzacji
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+
+// Prywatna ścieżka, która wymaga zalogowania
+const PrivateRoute = ({ element }) => {
+  const { isAuthenticated } = useAuth();
   
+  return isAuthenticated ? element : <Navigate to="/login" />;
+};
+
+// Motyw aplikacji
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#2196f3',
+    },
+    secondary: {
+      main: '#f50057',
+    },
+  },
+});
+
+function App() {
   return (
-    <div style={{ 
-      maxWidth: '600px', 
-      margin: '0 auto', 
-      padding: '20px',
-      fontFamily: 'Arial, sans-serif',
-      textAlign: 'center'
-    }}>
-      <h1 style={{ color: '#2196F3' }}>Asystent Prawny</h1>
-      <div style={{ 
-        border: '1px solid #ccc', 
-        borderRadius: '8px', 
-        padding: '20px',
-        backgroundColor: '#f9f9f9'
-      }}>
-        <p>React z npm działa! Kliknięcia: {count}</p>
-        <button 
-          onClick={() => setCount(count + 1)}
-          style={{
-            backgroundColor: '#2196F3',
-            color: 'white',
-            border: 'none',
-            padding: '10px 20px',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '16px'
-          }}
-        >
-          Kliknij mnie
-        </button>
-      </div>
-    </div>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Ścieżki autoryzacji */}
+            <Route element={<AuthLayout />}>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/password-reset" element={<PasswordReset />} />
+            </Route>
+            
+            {/* Ścieżki wymagające zalogowania */}
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<Navigate to="/dashboard" />} />
+              <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
+              <Route path="/cases" element={<PrivateRoute element={<CaseList />} />} />
+              <Route path="/cases/:caseId" element={<PrivateRoute element={<CaseView />} />} />
+              <Route path="/documents" element={<PrivateRoute element={<DocumentList />} />} />
+              <Route path="/documents/:documentId" element={<PrivateRoute element={<DocumentView />} />} />
+              <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
+            </Route>
+            
+            {/* Strona 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
-// Znajdź element root i renderuj do niego
-const rootElement = document.getElementById('root');
-if (rootElement) {
-  console.log('Znaleziono element root, rozpoczynam renderowanie React');
-  ReactDOM.render(<App />, rootElement);
-  console.log('Zakończono renderowanie React');
-} else {
-  console.error('Nie znaleziono elementu root!');
-}
+export default App;

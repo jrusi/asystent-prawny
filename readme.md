@@ -49,7 +49,7 @@ Aplikacja została zbudowana w architekturze mikroserwisowej, z wykorzystaniem k
 
 3. Uruchom aplikację za pomocą Docker Compose:
    ```
-   docker-compose up -d
+   docker-compose up -d   
    ```
 
 4. Aplikacja będzie dostępna pod adresem: http://localhost:3000

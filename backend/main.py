@@ -49,7 +49,11 @@ def init_db():
 # Inicjalizacja bazy danych
 init_db()
 
-app = FastAPI(title="Asystent Prawny")
+app = FastAPI(
+    title="Asystent Prawny",
+    # Don't redirect when there's a trailing slash
+    redirect_slashes=False
+)
 
 # Konfiguracja CORS
 app.add_middleware(
@@ -85,7 +89,7 @@ async def health_check():
     )
 
 # Endpointy uwierzytelniania
-@api_router.post("/token")
+@api_router.post("/token/")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Endpoint do logowania i uzyskania tokenu JWT"""
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
@@ -103,7 +107,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@api_router.post("/users", response_model=schemas.User)
+@api_router.post("/users/", response_model=schemas.User)
 async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """Rejestracja nowego użytkownika"""
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
@@ -123,13 +127,13 @@ async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 
-@api_router.get("/users/me")
+@api_router.get("/users/me/")
 async def read_users_me(current_user: models.User = Depends(get_current_active_user)):
     """Pobranie informacji o zalogowanym użytkowniku"""
     return current_user
 
 
-@api_router.get("/secure-data")
+@api_router.get("/secure-data/")
 async def get_secure_data(current_user: models.User = Depends(get_current_active_user)):
     """Przykładowy endpoint wymagający uwierzytelnienia"""
     return JSONResponse(

@@ -436,10 +436,13 @@
         function testEndpoint(endpoint) {
             const resultsElement = document.getElementById('apiTestResults');
             
-            resultsElement.innerHTML = `<p>Testowanie endpointu ${endpoint}...</p>`;
+            // Ensure endpoint has trailing slash
+            const normalizedEndpoint = endpoint.endsWith('/') ? endpoint : `${endpoint}/`;
             
-            // Ensure the endpoint starts with /api
-            const apiEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
+            resultsElement.innerHTML = `<p>Testowanie endpointu ${normalizedEndpoint}...</p>`;
+            
+            // Ensure the endpoint starts with /api and ends with /
+            const apiEndpoint = normalizedEndpoint.startsWith('/api') ? normalizedEndpoint : `/api${normalizedEndpoint}`;
             
             fetch(apiEndpoint)
                 .then(response => {

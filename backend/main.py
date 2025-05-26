@@ -50,9 +50,7 @@ def init_db():
 init_db()
 
 app = FastAPI(
-    title="Asystent Prawny",
-    # Don't redirect when there's a trailing slash
-    redirect_slashes=False
+    title="Asystent Prawny"
 )
 
 # Konfiguracja CORS
@@ -68,7 +66,7 @@ app.add_middleware(
 # Utworzenie routera API
 api_router = APIRouter(prefix="/api")
 
-@api_router.get("/")
+@api_router.get("")  # Root endpoint for /api
 async def root():
     """Endpoint główny"""
     return JSONResponse(
@@ -76,7 +74,7 @@ async def root():
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
 
-@api_router.get("/health/")
+@api_router.get("/health")  # Remove trailing slash
 async def health_check():
     """Endpoint sprawdzający stan usługi"""
     return JSONResponse(
@@ -146,7 +144,7 @@ async def get_secure_data(current_user: models.User = Depends(get_current_active
     )
 
 
-@api_router.get("/config/")
+@api_router.get("/config")  # Remove trailing slash
 async def get_config():
     """Endpoint pokazujący konfigurację (bez wrażliwych danych)"""
     return JSONResponse(
@@ -163,7 +161,7 @@ async def get_config():
     )
 
 
-@api_router.get("/api-info/")
+@api_router.get("/api-info")  # Remove trailing slash
 async def api_info():
     """Informacje o dostępnych endpointach API"""
     return JSONResponse(
@@ -176,49 +174,49 @@ async def api_info():
                     "description": "Podstawowy endpoint informacyjny"
                 },
                 {
-                    "path": "/health/",
+                    "path": "/health",
                     "method": "GET",
                     "description": "Endpoint sprawdzający stan usługi"
                 },
                 {
-                    "path": "/token/",
+                    "path": "/token",
                     "method": "POST",
                     "description": "Logowanie i uzyskanie tokenu JWT"
                 },
                 {
-                    "path": "/users/",
+                    "path": "/users",
                     "method": "POST",
                     "description": "Rejestracja nowego użytkownika"
                 },
                 {
-                    "path": "/users/me/",
+                    "path": "/users/me",
                     "method": "GET",
                     "description": "Informacje o zalogowanym użytkowniku (wymaga uwierzytelnienia)"
                 },
                 {
-                    "path": "/secure-data/",
+                    "path": "/secure-data",
                     "method": "GET",
                     "description": "Przykładowy chroniony endpoint (wymaga uwierzytelnienia)"
                 },
                 {
-                    "path": "/config/",
+                    "path": "/config",
                     "method": "GET",
                     "description": "Informacje o konfiguracji (bez wrażliwych danych)"
                 },
                 {
-                    "path": "/api-info/",
+                    "path": "/api-info",
                     "method": "GET",
                     "description": "Informacje o dostępnych endpointach API"
                 },
                 {
-                    "path": "/check-services/",
+                    "path": "/check-services",
                     "method": "GET",
                     "description": "Sprawdzenie stanu usług"
                 }
             ],
             "authentication": {
                 "type": "JWT",
-                "token_url": "/token/",
+                "token_url": "/token",
                 "expiration_minutes": ACCESS_TOKEN_EXPIRE_MINUTES
             }
         },
@@ -226,7 +224,7 @@ async def api_info():
     )
 
 
-@api_router.get("/check-services/")
+@api_router.get("/check-services")  # Remove trailing slash
 async def check_services(db: Session = Depends(get_db)):
     """Sprawdzenie stanu połączeń z usługami"""
     services_status = {

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 from datetime import timedelta
 import os
 
@@ -27,12 +27,27 @@ try:
 except Exception as e:
     print(f"Błąd połączenia z MinIO: {e}")
 
+# Funkcja do sprawdzania czy tabela istnieje
+def table_exists(table_name):
+    inspector = inspect(engine)
+    return table_name in inspector.get_table_names()
+
 # Tworzenie tabel w bazie danych
-try:
-    models.Base.metadata.create_all(bind=engine)
-    print("Tabele zostały utworzone pomyślnie")
-except Exception as e:
-    print(f"Błąd podczas tworzenia tabel: {e}")
+def init_db():
+    try:
+        # Sprawdź czy tabela users istnieje
+        if not table_exists("users"):
+            # Utwórz wszystkie tabele
+            models.Base.metadata.create_all(bind=engine)
+            print("Tabele zostały utworzone pomyślnie")
+        else:
+            print("Tabele już istnieją")
+    except Exception as e:
+        print(f"Błąd podczas tworzenia tabel: {e}")
+        raise e
+
+# Inicjalizacja bazy danych
+init_db()
 
 app = FastAPI(title="Asystent Prawny")
 

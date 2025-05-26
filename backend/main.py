@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
@@ -61,8 +61,8 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
-# Utworzenie routera z prefiksem /api
-api_router = FastAPI(title="Asystent Prawny API")
+# Utworzenie routera API
+api_router = APIRouter(prefix="/api")
 
 @api_router.get("/")
 async def root():
@@ -253,8 +253,8 @@ async def check_services(db: Session = Depends(get_db)):
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
 
-# Dodanie routera API do głównej aplikacji z prefiksem /api
-app.mount("/api", api_router)
+# Dodanie routera API do głównej aplikacji
+app.include_router(api_router)
 
 if __name__ == "__main__":
     import uvicorn

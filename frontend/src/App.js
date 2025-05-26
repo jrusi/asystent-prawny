@@ -1,102 +1,35 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-
-// Komponent layouts
-import MainLayout from './layouts/MainLayout';
-
-// Import komponentów stron
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import CaseList from './pages/CaseList';
-import CaseDetail from './pages/CaseDetail';
-import NewCase from './pages/NewCase';
-import Profile from './pages/Profile';
-
-// Komponent prywatnej trasy
-const PrivateRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return <div>Ładowanie...</div>;
-  }
-
-  return isAuthenticated ? children : <Navigate to="/login" />;
-};
-
-// Temat aplikacji
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-    background: {
-      default: '#f5f5f5',
-    },
-  },
-  typography: {
-    fontFamily: [
-      'Roboto',
-      'Arial',
-      'sans-serif'
-    ].join(','),
-  },
-});
+import React, { useState } from 'react';
 
 function App() {
+  const [count, setCount] = useState(0);
+
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/" element={
-              <PrivateRoute>
-                <MainLayout>
-                  <Dashboard />
-                </MainLayout>
-              </PrivateRoute>
-            } />
-            <Route path="/cases" element={
-              <PrivateRoute>
-                <MainLayout>
-                  <CaseList />
-                </MainLayout>
-              </PrivateRoute>
-            } />
-            <Route path="/cases/new" element={
-              <PrivateRoute>
-                <MainLayout>
-                  <NewCase />
-                </MainLayout>
-              </PrivateRoute>
-            } />
-            <Route path="/cases/:caseId" element={
-              <PrivateRoute>
-                <MainLayout>
-                  <CaseDetail />
-                </MainLayout>
-              </PrivateRoute>
-            } />
-            <Route path="/profile" element={
-              <PrivateRoute>
-                <MainLayout>
-                  <Profile />
-                </MainLayout>
-              </PrivateRoute>
-            } />
-          </Routes>
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+    <div style={{ 
+      padding: '20px', 
+      maxWidth: '800px', 
+      margin: '0 auto',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <h1>Asystent Prawny</h1>
+      <div style={{ marginTop: '20px' }}>
+        <p>Aplikacja jest w trakcie ładowania...</p>
+        <p>Sprawdzanie połączenia z serwerem: <span style={{ color: count > 0 ? 'green' : 'orange' }}>{count > 0 ? 'OK' : 'Oczekiwanie...'}</span></p>
+        <button 
+          onClick={() => setCount(count + 1)}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+            backgroundColor: '#2196f3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Test połączenia
+        </button>
+      </div>
+    </div>
   );
 }
 

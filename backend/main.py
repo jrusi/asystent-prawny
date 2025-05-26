@@ -76,7 +76,7 @@ async def root():
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
 
-@api_router.get("/health")
+@api_router.get("/health/")
 async def health_check():
     """Endpoint sprawdzający stan usługi"""
     return JSONResponse(
@@ -146,7 +146,7 @@ async def get_secure_data(current_user: models.User = Depends(get_current_active
     )
 
 
-@api_router.get("/config")
+@api_router.get("/config/")
 async def get_config():
     """Endpoint pokazujący konfigurację (bez wrażliwych danych)"""
     return JSONResponse(
@@ -163,7 +163,7 @@ async def get_config():
     )
 
 
-@api_router.get("/api-info")
+@api_router.get("/api-info/")
 async def api_info():
     """Informacje o dostępnych endpointach API"""
     return JSONResponse(
@@ -176,12 +176,12 @@ async def api_info():
                     "description": "Podstawowy endpoint informacyjny"
                 },
                 {
-                    "path": "/health",
+                    "path": "/health/",
                     "method": "GET",
                     "description": "Endpoint sprawdzający stan usługi"
                 },
                 {
-                    "path": "/token",
+                    "path": "/token/",
                     "method": "POST",
                     "description": "Logowanie i uzyskanie tokenu JWT"
                 },
@@ -201,24 +201,24 @@ async def api_info():
                     "description": "Przykładowy chroniony endpoint (wymaga uwierzytelnienia)"
                 },
                 {
-                    "path": "/config",
+                    "path": "/config/",
                     "method": "GET",
                     "description": "Informacje o konfiguracji (bez wrażliwych danych)"
                 },
                 {
-                    "path": "/api-info",
+                    "path": "/api-info/",
                     "method": "GET",
                     "description": "Informacje o dostępnych endpointach API"
                 },
                 {
-                    "path": "/check-services",
+                    "path": "/check-services/",
                     "method": "GET",
                     "description": "Sprawdzenie stanu usług"
                 }
             ],
             "authentication": {
                 "type": "JWT",
-                "token_url": "/token",
+                "token_url": "/token/",
                 "expiration_minutes": ACCESS_TOKEN_EXPIRE_MINUTES
             }
         },
@@ -226,7 +226,7 @@ async def api_info():
     )
 
 
-@api_router.get("/check-services")
+@api_router.get("/check-services/")
 async def check_services(db: Session = Depends(get_db)):
     """Sprawdzenie stanu połączeń z usługami"""
     services_status = {

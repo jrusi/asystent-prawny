@@ -477,7 +477,7 @@
             
             resultsElement.innerHTML = '<p>Rejestracja użytkownika...</p>';
             
-            fetch('/api/users/', {
+            fetch('/users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -653,7 +653,5 @@
             checkServiceDetails();
         });
     </script>
-</body>
-</html>
 </body>
 </html>

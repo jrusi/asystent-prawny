@@ -58,10 +58,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
-# Podstawowe endpointy
-@app.get("/")
+# Utworzenie routera z prefiksem /api
+api_router = FastAPI(title="Asystent Prawny API")
+
+@api_router.get("/")
 async def root():
     """Endpoint główny"""
     return JSONResponse(
@@ -69,7 +72,7 @@ async def root():
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
 
-@app.get("/health")
+@api_router.get("/health")
 async def health_check():
     """Endpoint sprawdzający stan usługi"""
     return JSONResponse(
@@ -82,7 +85,7 @@ async def health_check():
     )
 
 # Endpointy uwierzytelniania
-@app.post("/token")
+@api_router.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Endpoint do logowania i uzyskania tokenu JWT"""
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
@@ -100,7 +103,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.post("/users", response_model=schemas.User)
+@api_router.post("/users", response_model=schemas.User)
 async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """Rejestracja nowego użytkownika"""
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
@@ -120,15 +123,13 @@ async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 
-
-@app.get("/users/me")
+@api_router.get("/users/me")
 async def read_users_me(current_user: models.User = Depends(get_current_active_user)):
     """Pobranie informacji o zalogowanym użytkowniku"""
     return current_user
 
 
-# Chroniony endpoint przykładowy
-@app.get("/secure-data")
+@api_router.get("/secure-data")
 async def get_secure_data(current_user: models.User = Depends(get_current_active_user)):
     """Przykładowy endpoint wymagający uwierzytelnienia"""
     return JSONResponse(
@@ -141,7 +142,7 @@ async def get_secure_data(current_user: models.User = Depends(get_current_active
     )
 
 
-@app.get("/config")
+@api_router.get("/config")
 async def get_config():
     """Endpoint pokazujący konfigurację (bez wrażliwych danych)"""
     return JSONResponse(
@@ -158,7 +159,7 @@ async def get_config():
     )
 
 
-@app.get("/api-info")
+@api_router.get("/api-info")
 async def api_info():
     """Informacje o dostępnych endpointach API"""
     return JSONResponse(
@@ -221,7 +222,7 @@ async def api_info():
     )
 
 
-@app.get("/check-services")
+@api_router.get("/check-services")
 async def check_services(db: Session = Depends(get_db)):
     """Sprawdzenie stanu połączeń z usługami"""
     services_status = {
@@ -251,6 +252,9 @@ async def check_services(db: Session = Depends(get_db)):
         },
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
+
+# Dodanie routera API do głównej aplikacji z prefiksem /api
+app.mount("/api", api_router)
 
 if __name__ == "__main__":
     import uvicorn

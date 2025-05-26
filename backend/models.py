@@ -35,7 +35,7 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relacje
-    # cases = relationship("User", back_populates="user")
+    cases = relationship("Case", back_populates="owner")
 
 class Case(Base):
     """Model sprawy prawnej."""

@@ -261,11 +261,11 @@
                 </div>
                 
                 <div class="endpoints">
-                    <div class="endpoint">/api/users/me/</div>
-                    <button class="button" onclick="testProtectedEndpoint('/api/users/me/')">Test</button>
+                    <div class="endpoint">/api/users/me</div>
+                    <button class="button" onclick="testProtectedEndpoint('/api/users/me')">Test</button>
                     
-                    <div class="endpoint">/api/secure-data/</div>
-                    <button class="button" onclick="testProtectedEndpoint('/api/secure-data/')">Test</button>
+                    <div class="endpoint">/api/secure-data</div>
+                    <button class="button" onclick="testProtectedEndpoint('/api/secure-data')">Test</button>
                 </div>
                 
                 <div id="protectedResults" class="results">
@@ -600,7 +600,10 @@
             
             resultsElement.innerHTML = `<p>Testowanie chronionego endpointu ${endpoint}...</p>`;
             
-            fetch(endpoint, {
+            // Remove trailing slash if present
+            const cleanEndpoint = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
+            
+            fetch(cleanEndpoint, {
                 headers: {
                     'Authorization': `Bearer ${authToken}`
                 }

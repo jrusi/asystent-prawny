@@ -438,7 +438,10 @@
             
             resultsElement.innerHTML = `<p>Testowanie endpointu ${endpoint}...</p>`;
             
-            fetch(endpoint)
+            // Ensure the endpoint starts with /api
+            const apiEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
+            
+            fetch(apiEndpoint)
                 .then(response => {
                     const statusText = response.ok ? 'Sukces' : 'Błąd';
                     const statusClass = response.ok ? 'success' : 'error';
@@ -477,7 +480,7 @@
             
             resultsElement.innerHTML = '<p>Rejestracja użytkownika...</p>';
             
-            fetch('/users', {
+            fetch('/api/users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

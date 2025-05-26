@@ -11,6 +11,21 @@ from database import get_db, engine
 import models
 import schemas
 from auth import create_access_token, get_current_active_user, get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
+from storage import MinioClient
+
+# Inicjalizacja klienta MinIO
+minio_client = MinioClient(
+    endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
+    access_key=os.getenv("MINIO_ROOT_USER", "minioadmin"),
+    secret_key=os.getenv("MINIO_ROOT_PASSWORD", "minioadmin")
+)
+
+# Sprawdzenie połączenia z MinIO
+try:
+    minio_client.check_connection()
+    print("Połączenie z MinIO działa poprawnie")
+except Exception as e:
+    print(f"Błąd połączenia z MinIO: {e}")
 
 # Tworzenie tabel w bazie danych
 try:

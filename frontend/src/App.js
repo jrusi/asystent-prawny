@@ -7,7 +7,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import CaseView from './pages/CaseView';
+import CaseDetail from './pages/CaseDetail';
 import CaseList from './pages/CaseList';
 import DocumentView from './pages/DocumentView';
 import DocumentList from './pages/DocumentList';
@@ -60,7 +60,7 @@ function App() {
               <Route path="/" element={<Navigate to="/dashboard" />} />
               <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
               <Route path="/cases" element={<PrivateRoute element={<CaseList />} />} />
-              <Route path="/cases/:caseId" element={<PrivateRoute element={<CaseView />} />} />
+              <Route path="/cases/:caseId" element={<PrivateRoute element={<CaseDetail />} />} />
               <Route path="/documents" element={<PrivateRoute element={<DocumentList />} />} />
               <Route path="/documents/:documentId" element={<PrivateRoute element={<DocumentView />} />} />
               <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />

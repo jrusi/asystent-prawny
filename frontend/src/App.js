@@ -22,9 +22,24 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Prywatna ścieżka, która wymaga zalogowania
 const PrivateRoute = ({ element }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return null; // lub komponent ładowania
+  }
   
   return isAuthenticated ? element : <Navigate to="/login" />;
+};
+
+// Publiczna ścieżka, która przekierowuje zalogowanych użytkowników
+const PublicRoute = ({ element }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return null; // lub komponent ładowania
+  }
+  
+  return isAuthenticated ? <Navigate to="/dashboard" /> : element;
 };
 
 // Motyw aplikacji
@@ -48,18 +63,18 @@ function App() {
           <Routes>
             {/* Ścieżki autoryzacji */}
             <Route element={<AuthLayout />}>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/password-reset" element={<PasswordReset />} />
+              <Route path="/login" element={<PublicRoute element={<Login />} />} />
+              <Route path="/register" element={<PublicRoute element={<Register />} />} />
+              <Route path="/password-reset" element={<PublicRoute element={<PasswordReset />} />} />
             </Route>
             
             {/* Ścieżki wymagające zalogowania */}
-            <Route element={<MainLayout />}>
+            <Route element={<PrivateRoute element={<MainLayout />} />}>
               <Route path="/" element={<Navigate to="/dashboard" />} />
-              <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
-              <Route path="/cases" element={<PrivateRoute element={<CaseList />} />} />
-              <Route path="/cases/:caseId" element={<PrivateRoute element={<CaseDetail />} />} />
-              <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/cases" element={<CaseList />} />
+              <Route path="/cases/:caseId" element={<CaseDetail />} />
+              <Route path="/profile" element={<Profile />} />
             </Route>
             
             {/* Strona 404 */}

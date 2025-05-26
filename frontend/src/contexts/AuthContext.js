@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             
             // Pobranie informacji o użytkowniku
-            const response = await axios.get('/users/me/');
+            const response = await axios.get('/api/users/me');
             setCurrentUser(response.data);
           }
         } catch (error) {
@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('/token', new URLSearchParams({
+      const response = await axios.post('/api/token', new URLSearchParams({
         username: email,
         password: password
       }), {
@@ -60,19 +60,19 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
       // Pobranie informacji o użytkowniku
-      const userResponse = await axios.get('/users/me/');
+      const userResponse = await axios.get('/api/users/me');
       setCurrentUser(userResponse.data);
       
       return true;
     } catch (error) {
       console.error('Błąd logowania:', error);
-      return false;
+      throw error;
     }
   };
 
   const register = async (email, password, fullName) => {
     try {
-      await axios.post('/users/', {
+      await axios.post('/api/users/', {
         email,
         password,
         full_name: fullName
@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }) => {
       return await login(email, password);
     } catch (error) {
       console.error('Błąd rejestracji:', error);
-      return false;
+      throw error;
     }
   };
 
@@ -104,7 +104,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

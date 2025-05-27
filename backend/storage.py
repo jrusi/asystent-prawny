@@ -11,20 +11,30 @@ class MinioClient:
             endpoint,
             access_key=access_key,
             secret_key=secret_key,
-            secure=False  # W środowisku produkcyjnym powinno być True
+            secure=False  # Dla lokalnego rozwoju, w produkcji powinno być True
         )
-        self.bucket_name = "legal-assistant"
+        self.bucket_name = "asystent-prawny"
+        self.ensure_bucket_exists()
+
+    def ensure_bucket_exists(self):
+        """Sprawdzenie czy bucket istnieje, jeśli nie - utworzenie go"""
+        try:
+            if not self.client.bucket_exists(self.bucket_name):
+                self.client.make_bucket(self.bucket_name)
+                print(f"Utworzono bucket: {self.bucket_name}")
+            else:
+                print(f"Bucket {self.bucket_name} już istnieje")
+        except S3Error as e:
+            print(f"Błąd MinIO: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Nie można utworzyć bucketa: {str(e)}"
+            )
 
     def check_connection(self):
-        """Sprawdzenie połączenia i inicjalizacja bucketa"""
+        """Sprawdzenie połączenia z MinIO"""
         try:
-            # Sprawdzenie czy bucket istnieje
-            if not self.client.bucket_exists(self.bucket_name):
-                # Utworzenie bucketa
-                self.client.make_bucket(self.bucket_name)
-                print(f"Bucket '{self.bucket_name}' utworzony.")
-            else:
-                print(f"Bucket '{self.bucket_name}' już istnieje.")
+            self.client.bucket_exists(self.bucket_name)
             return True
         except S3Error as e:
             print(f"Błąd MinIO: {e}")
@@ -36,11 +46,10 @@ class MinioClient:
     def create_user_bucket(self, user_id):
         """Tworzenie struktury katalogów dla użytkownika"""
         try:
-            # W MinIO nie ma katalogów, ale możemy symulować je za pomocą prefiksów
             # Tworzymy pusty plik jako marker
             self.client.put_object(
                 bucket_name=self.bucket_name,
-                object_name=f"{user_id}/.keep",
+                object_name=f"users/{user_id}/.keep",
                 data=BytesIO(b""),
                 length=0
             )
@@ -68,6 +77,29 @@ class MinioClient:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Nie można utworzyć struktury katalogów: {str(e)}"
+            )
+
+    def delete_case_directory(self, case_path):
+        """Usunięcie wszystkich plików sprawy"""
+        try:
+            # Pobierz listę wszystkich obiektów w katalogu sprawy
+            objects = self.client.list_objects(
+                bucket_name=self.bucket_name,
+                prefix=case_path
+            )
+            
+            # Usuń każdy obiekt
+            for obj in objects:
+                self.client.remove_object(
+                    bucket_name=self.bucket_name,
+                    object_name=obj.object_name
+                )
+            return True
+        except S3Error as e:
+            print(f"Błąd MinIO: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Nie można usunąć plików sprawy: {str(e)}"
             )
 
     def upload_file(self, file_path, content):
@@ -105,27 +137,12 @@ class MinioClient:
                 detail=f"Nie można pobrać pliku: {str(e)}"
             )
 
-    def delete_file(self, file_path):
-        """Usuwanie pliku z MinIO"""
-        try:
-            self.client.remove_object(
-                bucket_name=self.bucket_name,
-                object_name=file_path
-            )
-            return True
-        except S3Error as e:
-            print(f"Błąd MinIO: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Nie można usunąć pliku: {str(e)}"
-            )
-
-    def list_files(self, prefix):
-        """Listowanie plików z określonym prefiksem"""
+    def list_files(self, directory_path):
+        """Listowanie plików w katalogu"""
         try:
             objects = self.client.list_objects(
                 bucket_name=self.bucket_name,
-                prefix=prefix,
+                prefix=directory_path,
                 recursive=True
             )
             return [obj.object_name for obj in objects]
@@ -133,5 +150,5 @@ class MinioClient:
             print(f"Błąd MinIO: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Nie można wylistować plików: {str(e)}"
+                detail=f"Nie można pobrać listy plików: {str(e)}"
             )

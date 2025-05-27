@@ -131,6 +131,99 @@ async def read_users_me(current_user: models.User = Depends(get_current_active_u
     return current_user
 
 
+# Endpointy do zarządzania sprawami
+@api_router.get("/cases")
+async def get_cases(
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Pobranie listy spraw użytkownika"""
+    cases = db.query(models.Case).filter(models.Case.owner_id == current_user.id).all()
+    return cases
+
+@api_router.post("/cases")
+async def create_case(
+    case: schemas.CaseCreate,
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Utworzenie nowej sprawy"""
+    db_case = models.Case(**case.dict(), owner_id=current_user.id)
+    db.add(db_case)
+    db.commit()
+    db.refresh(db_case)
+    
+    # Utworzenie struktury katalogów dla sprawy w MinIO
+    minio_client.create_case_directory(f"users/{current_user.id}/cases/{db_case.id}")
+    
+    return db_case
+
+@api_router.get("/cases/{case_id}")
+async def get_case(
+    case_id: int,
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Pobranie szczegółów sprawy"""
+    case = db.query(models.Case).filter(
+        models.Case.id == case_id,
+        models.Case.owner_id == current_user.id
+    ).first()
+    
+    if case is None:
+        raise HTTPException(status_code=404, detail="Sprawa nie została znaleziona")
+    
+    return case
+
+@api_router.put("/cases/{case_id}")
+async def update_case(
+    case_id: int,
+    case_update: schemas.CaseUpdate,
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Aktualizacja sprawy"""
+    db_case = db.query(models.Case).filter(
+        models.Case.id == case_id,
+        models.Case.owner_id == current_user.id
+    ).first()
+    
+    if db_case is None:
+        raise HTTPException(status_code=404, detail="Sprawa nie została znaleziona")
+    
+    for key, value in case_update.dict(exclude_unset=True).items():
+        setattr(db_case, key, value)
+    
+    db.commit()
+    db.refresh(db_case)
+    return db_case
+
+@api_router.delete("/cases/{case_id}")
+async def delete_case(
+    case_id: int,
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Usunięcie sprawy"""
+    db_case = db.query(models.Case).filter(
+        models.Case.id == case_id,
+        models.Case.owner_id == current_user.id
+    ).first()
+    
+    if db_case is None:
+        raise HTTPException(status_code=404, detail="Sprawa nie została znaleziona")
+    
+    # Usunięcie plików sprawy z MinIO
+    try:
+        minio_client.delete_case_directory(f"users/{current_user.id}/cases/{case_id}")
+    except Exception as e:
+        print(f"Błąd podczas usuwania plików sprawy: {e}")
+    
+    db.delete(db_case)
+    db.commit()
+    return {"message": "Sprawa została usunięta"}
+
+
 @api_router.get("/secure-data")  # Remove trailing slash
 async def get_secure_data(current_user: models.User = Depends(get_current_active_user)):
     """Przykładowy endpoint wymagający uwierzytelnienia"""
@@ -192,6 +285,31 @@ async def api_info():
                     "path": "/users/me",
                     "method": "GET",
                     "description": "Informacje o zalogowanym użytkowniku (wymaga uwierzytelnienia)"
+                },
+                {
+                    "path": "/cases",
+                    "method": "GET",
+                    "description": "Lista spraw użytkownika (wymaga uwierzytelnienia)"
+                },
+                {
+                    "path": "/cases",
+                    "method": "POST",
+                    "description": "Utworzenie nowej sprawy (wymaga uwierzytelnienia)"
+                },
+                {
+                    "path": "/cases/{case_id}",
+                    "method": "GET",
+                    "description": "Szczegóły sprawy (wymaga uwierzytelnienia)"
+                },
+                {
+                    "path": "/cases/{case_id}",
+                    "method": "PUT",
+                    "description": "Aktualizacja sprawy (wymaga uwierzytelnienia)"
+                },
+                {
+                    "path": "/cases/{case_id}",
+                    "method": "DELETE",
+                    "description": "Usunięcie sprawy (wymaga uwierzytelnienia)"
                 },
                 {
                     "path": "/secure-data",

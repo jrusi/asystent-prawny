@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../utils/api';
 import {
   Typography,
   Box,
@@ -36,9 +36,11 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('Fetching cases...');
         // Pobieranie listy spraw
-        const casesResponse = await axios.get('/cases/');
-        setCases(casesResponse.data);
+        const casesResponse = await api.get('/cases/');
+        console.log('Cases response:', casesResponse.data);
+        setCases(Array.isArray(casesResponse.data) ? casesResponse.data : []);
         
         // Tutaj moglibyśmy pobierać najnowsze dokumenty, ale dla uproszczenia
         // użyjemy przykładowych danych
@@ -48,14 +50,14 @@ const Dashboard = () => {
             filename: 'pozew.pdf',
             document_type: 'pozew',
             created_at: new Date(),
-            case_id: casesResponse.data[0]?.id || 1
+            case_id: casesResponse.data?.[0]?.id || 1
           },
           {
             id: 2,
             filename: 'odpowiedz_na_pozew.pdf',
             document_type: 'odpowiedź na pozew',
             created_at: new Date(),
-            case_id: casesResponse.data[0]?.id || 1
+            case_id: casesResponse.data?.[0]?.id || 1
           }
         ]);
         
@@ -63,6 +65,7 @@ const Dashboard = () => {
       } catch (err) {
         console.error('Błąd pobierania danych:', err);
         setError('Wystąpił błąd podczas pobierania danych. Spróbuj ponownie później.');
+        setCases([]);
         setLoading(false);
       }
     };
@@ -103,7 +106,7 @@ const Dashboard = () => {
             </Typography>
             <Divider sx={{ mb: 2 }} />
             
-            {cases.length === 0 ? (
+            {!Array.isArray(cases) || cases.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 2 }}>
                 <Typography variant="body1" gutterBottom>
                   Nie masz jeszcze żadnych spraw.
@@ -199,7 +202,7 @@ const Dashboard = () => {
                       Utwórz nową sprawę
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Dodaj nową sprawę, aby zorganizować dokumenty i znaleźć odpowiednie akty prawne.
+                      Rozpocznij nową sprawę i zarządzaj jej dokumentami
                     </Typography>
                   </CardContent>
                   <CardActions>
@@ -219,21 +222,20 @@ const Dashboard = () => {
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="h6" component="div">
-                      Przeglądaj akty prawne
+                      Przeglądaj sprawy
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Wyszukaj i analizuj akty prawne związane z Twoją sprawą.
+                      Zobacz listę wszystkich Twoich spraw
                     </Typography>
                   </CardContent>
                   <CardActions>
                     <Button 
                       size="small" 
-                      startIcon={<GavelIcon />}
+                      startIcon={<FolderIcon />}
                       component={RouterLink}
                       to="/cases"
-                      disabled={cases.length === 0}
                     >
-                      Przejdź do spraw
+                      Zobacz sprawy
                     </Button>
                   </CardActions>
                 </Card>
@@ -243,20 +245,20 @@ const Dashboard = () => {
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="h6" component="div">
-                      Zadaj pytanie
+                      Generuj dokumenty
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Zadaj pytanie dotyczące Twojej sprawy i uzyskaj odpowiedź.
+                      Twórz dokumenty prawne na podstawie szablonów
                     </Typography>
                   </CardContent>
                   <CardActions>
                     <Button 
-                      size="small"
+                      size="small" 
+                      startIcon={<GavelIcon />}
                       component={RouterLink}
-                      to={cases.length > 0 ? `/cases/${cases[0].id}` : "/cases/new"}
-                      disabled={cases.length === 0}
+                      to="/documents/new"
                     >
-                      {cases.length > 0 ? "Zadaj pytanie" : "Najpierw utwórz sprawę"}
+                      Generuj dokument
                     </Button>
                   </CardActions>
                 </Card>

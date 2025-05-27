@@ -86,6 +86,8 @@ services:
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
       - ELASTIC_URL=http://elasticsearch:9200
+    volumes:
+      - ./backend:/app/backend
     networks:
       - app-network
     restart: on-failure

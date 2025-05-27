@@ -13,9 +13,6 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 COPY init.py .
 
-# Copy backend code
-COPY ../backend /app/backend/
-
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 

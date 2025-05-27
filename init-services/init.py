@@ -8,7 +8,7 @@ import logging
 import sys
 
 # Add backend directory to Python path
-sys.path.append('/app')
+sys.path.append('/app/backend')
 
 from models import Base
 

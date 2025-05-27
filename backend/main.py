@@ -10,7 +10,10 @@ import os
 from database import get_db, engine
 import models
 import schemas
-from auth import create_access_token, get_current_active_user, get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
+from auth import (
+    create_access_token, get_current_active_user, get_password_hash, 
+    verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
+)
 from storage import MinioClient
 from config import settings
 
@@ -55,6 +58,18 @@ app = FastAPI(
     version=settings.VERSION
 )
 
+# CORS middleware configuration
+origins = settings.get_cors_origins()
+print("Allowed origins:", origins)  # Debug print
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins temporarily for debugging
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Public endpoints that don't require authentication
 public_endpoints = [
     "/api/token",
@@ -72,8 +87,7 @@ async def preflight_middleware(request: Request, call_next):
         origin = request.headers.get("origin", "*")
         
         # Check if the origin is allowed
-        allowed_origins = settings.get_cors_origins()
-        if origin in allowed_origins or origin == "*":
+        if origin in origins or origin == "*":
             headers = {
                 "Access-Control-Allow-Origin": origin,
                 "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -85,16 +99,6 @@ async def preflight_middleware(request: Request, call_next):
     
     response = await call_next(request)
     return response
-
-# CORS middleware for non-preflight requests
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.get_cors_origins(),
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
-    max_age=600,  # Cache preflight response for 10 minutes
-)
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -134,49 +138,73 @@ async def health_check():
     )
 
 # Endpointy uwierzytelniania
-@api_router.post("/token")  # Remove trailing slash
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """Endpoint do logowania i uzyskania tokenu JWT"""
-    user = db.query(models.User).filter(models.User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+@api_router.post("/token")
+async def login_for_access_token(request: Request, db: Session = Depends(get_db)):
+    """Login endpoint"""
+    try:
+        form_data = await request.json()
+        user = db.query(models.User).filter(models.User.email == form_data["username"]).first()
+        if not user or not verify_password(form_data["password"], user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Niepoprawny email lub hasło"
+            )
+        
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.email}, expires_delta=access_token_expires
+        )
+        return {"access_token": access_token, "token_type": "bearer"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+@api_router.post("/users")
+async def create_user(request: Request, db: Session = Depends(get_db)):
+    """User registration endpoint"""
+    try:
+        user_data = await request.json()
+        db_user = db.query(models.User).filter(models.User.email == user_data["email"]).first()
+        if db_user:
+            raise HTTPException(status_code=400, detail="Email już zarejestrowany")
+        
+        hashed_password = get_password_hash(user_data["password"])
+        db_user = models.User(
+            email=user_data["email"],
+            hashed_password=hashed_password,
+            full_name=user_data.get("full_name", "")
+        )
+        
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        
+        # Utworzenie katalogu w MinIO dla nowego użytkownika
+        minio_client.create_user_bucket(str(db_user.id))
+        
+        return {
+            "id": db_user.id,
+            "email": db_user.email,
+            "full_name": db_user.full_name
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+@api_router.get("/users/me")
+async def read_users_me(request: Request, db: Session = Depends(get_db)):
+    """Get current user info"""
+    user = await get_current_active_user(request, db)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Niepoprawny email lub hasło",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Not authenticated"
         )
-    
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-
-@api_router.post("/users")  # Remove trailing slash
-async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    """Rejestracja nowego użytkownika"""
-    db_user = db.query(models.User).filter(models.User.email == user.email).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email już zarejestrowany")
-    
-    hashed_password = get_password_hash(user.password)
-    db_user = models.User(email=user.email, hashed_password=hashed_password, full_name=user.full_name)
-    
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    
-    # Utworzenie katalogu w MinIO dla nowego użytkownika
-    minio_client.create_user_bucket(str(db_user.id))
-    
-    return db_user
-
-
-@api_router.get("/users/me")  # Remove trailing slash
-async def read_users_me(current_user: models.User = Depends(get_current_active_user)):
-    """Pobranie informacji o zalogowanym użytkowniku"""
-    return current_user
-
+    return user
 
 # Endpointy do zarządzania sprawami
 @api_router.get("/cases")
@@ -270,7 +298,6 @@ async def delete_case(
     db.commit()
     return {"message": "Sprawa została usunięta"}
 
-
 @api_router.get("/secure-data")  # Remove trailing slash
 async def get_secure_data(current_user: models.User = Depends(get_current_active_user)):
     """Przykładowy endpoint wymagający uwierzytelnienia"""
@@ -282,7 +309,6 @@ async def get_secure_data(current_user: models.User = Depends(get_current_active
         },
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
-
 
 @api_router.get("/config")  # Remove trailing slash
 async def get_config():
@@ -299,7 +325,6 @@ async def get_config():
         },
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
-
 
 @api_router.get("/api-info")  # Remove trailing slash
 async def api_info():
@@ -387,7 +412,6 @@ async def api_info():
         },
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
-
 
 @api_router.get("/check-services")  # Remove trailing slash
 async def check_services(db: Session = Depends(get_db)):

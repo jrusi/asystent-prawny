@@ -2,55 +2,27 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import HTTPException, status, Request
 from sqlalchemy.orm import Session
-
-import models
-import schemas
-from database import get_db
 import os
 
-# Konfiguracja zabezpieczeń
+import models
+from database import get_db
+
+# Security configuration
 SECRET_KEY = os.getenv("JWT_SECRET", "supersecret_replace_in_production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-class CustomOAuth2PasswordBearer(OAuth2PasswordBearer):
-    async def __call__(self, request: Request) -> Optional[str]:
-        # List of endpoints that don't require authentication
-        public_endpoints = ["/api/token", "/api/users", "/api/health", "/api", "/docs", "/openapi.json"]
-        
-        # Skip authentication for public endpoints
-        path = request.url.path
-        for endpoint in public_endpoints:
-            if path.rstrip("/") == f"/api{endpoint.rstrip('/')}" or path.rstrip("/") == endpoint.rstrip("/"):
-                return None
-        
-        # For other endpoints, try to get the token
-        try:
-            token = await super().__call__(request)
-            return token
-        except HTTPException as e:
-            # Only raise the exception if it's not a public endpoint
-            for endpoint in public_endpoints:
-                if path.rstrip("/") == f"/api{endpoint.rstrip('/')}" or path.rstrip("/") == endpoint.rstrip("/"):
-                    return None
-            raise e
-
-oauth2_scheme = CustomOAuth2PasswordBearer(tokenUrl="api/token")
-
 def verify_password(plain_password, hashed_password):
     """Weryfikacja hasła"""
     return pwd_context.verify(plain_password, hashed_password)
 
-
 def get_password_hash(password):
     """Hashowanie hasła"""
     return pwd_context.hash(password)
-
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Tworzenie tokenu JWT"""
@@ -63,39 +35,34 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+async def get_current_user(request: Request, db: Session) -> Optional[models.User]:
+    """Get current user from JWT token in Authorization header"""
+    # Public endpoints don't require authentication
+    public_endpoints = ["/api/token", "/api/users", "/api/health", "/api", "/docs", "/openapi.json"]
+    for endpoint in public_endpoints:
+        if request.url.path.rstrip("/") == f"/api{endpoint.rstrip('/')}" or request.url.path.rstrip("/") == endpoint.rstrip("/"):
+            return None
 
-async def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    """Pobieranie aktualnie zalogowanego użytkownika na podstawie JWT"""
-    # If no token is provided for public endpoints
-    if token is None:
+    # Get token from header
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
         return None
-        
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Nie można zweryfikować poświadczeń",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+
+    token = auth_header.split(" ")[1]
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            raise credentials_exception
+            return None
     except JWTError:
-        raise credentials_exception
-    
+        return None
+
     user = db.query(models.User).filter(models.User.email == email).first()
-    if user is None:
-        raise credentials_exception
-    
     return user
 
-
-async def get_current_active_user(current_user: Optional[models.User] = Depends(get_current_user)):
-    """Sprawdzanie czy użytkownik jest aktywny"""
-    # For public endpoints where current_user is None
-    if current_user is None:
-        return None
-        
-    if not current_user.is_active:
+async def get_current_active_user(request: Request, db: Session) -> Optional[models.User]:
+    """Get current active user"""
+    user = await get_current_user(request, db)
+    if user and not user.is_active:
         raise HTTPException(status_code=400, detail="Nieaktywny użytkownik")
-    return current_user
+    return user

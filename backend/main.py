@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import text, inspect
 from datetime import timedelta
@@ -65,26 +65,42 @@ public_endpoints = [
     "/openapi.json"
 ]
 
-# CORS middleware
+@app.middleware("http")
+async def preflight_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        # Get the origin from the request headers
+        origin = request.headers.get("origin", "*")
+        
+        # Check if the origin is allowed
+        allowed_origins = settings.get_cors_origins()
+        if origin in allowed_origins or origin == "*":
+            headers = {
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Authorization, Content-Type",
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Max-Age": "600",
+            }
+            return Response(status_code=200, headers=headers)
+    
+    response = await call_next(request)
+    return response
+
+# CORS middleware for non-preflight requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.get_cors_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_headers=["Authorization", "Content-Type"],
     max_age=600,  # Cache preflight response for 10 minutes
 )
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    # Always allow OPTIONS requests without authentication
-    if request.method == "OPTIONS":
-        response = await call_next(request)
-        return response
-
-    # Skip authentication for public endpoints
     path = request.url.path
+    
+    # Skip authentication for public endpoints
     for endpoint in public_endpoints:
         if path.rstrip("/") == f"/api{endpoint.rstrip('/')}" or path.rstrip("/") == endpoint.rstrip("/"):
             response = await call_next(request)

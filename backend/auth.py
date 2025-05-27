@@ -23,10 +23,6 @@ class CustomOAuth2PasswordBearer(OAuth2PasswordBearer):
         # List of endpoints that don't require authentication
         public_endpoints = ["/api/token", "/api/users", "/api/health", "/api", "/docs", "/openapi.json"]
         
-        # Skip authentication for OPTIONS requests
-        if request.method == "OPTIONS":
-            return None
-        
         # Skip authentication for public endpoints
         path = request.url.path
         for endpoint in public_endpoints:
@@ -35,13 +31,14 @@ class CustomOAuth2PasswordBearer(OAuth2PasswordBearer):
         
         # For other endpoints, try to get the token
         try:
-            return await super().__call__(request)
-        except HTTPException:
-            # If token is missing and it's a public endpoint, allow it
+            token = await super().__call__(request)
+            return token
+        except HTTPException as e:
+            # Only raise the exception if it's not a public endpoint
             for endpoint in public_endpoints:
                 if path.rstrip("/") == f"/api{endpoint.rstrip('/')}" or path.rstrip("/") == endpoint.rstrip("/"):
                     return None
-            raise
+            raise e
 
 oauth2_scheme = CustomOAuth2PasswordBearer(tokenUrl="api/token")
 

@@ -12,12 +12,13 @@ import models
 import schemas
 from auth import create_access_token, get_current_active_user, get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
 from storage import MinioClient
+from config import settings
 
 # Inicjalizacja klienta MinIO
 minio_client = MinioClient(
-    endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
-    access_key=os.getenv("MINIO_ROOT_USER", "minioadmin"),
-    secret_key=os.getenv("MINIO_ROOT_PASSWORD", "minioadmin")
+    endpoint=settings.MINIO_ENDPOINT,
+    access_key=settings.MINIO_ROOT_USER,
+    secret_key=settings.MINIO_ROOT_PASSWORD
 )
 
 # Sprawdzenie połączenia z MinIO
@@ -50,13 +51,14 @@ def init_db():
 init_db()
 
 app = FastAPI(
-    title="Asystent Prawny"
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION
 )
 
 # Konfiguracja CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

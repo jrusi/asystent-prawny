@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import {
@@ -11,7 +11,8 @@ import {
   Divider,
   CircularProgress,
   Alert,
-  Avatar
+  Avatar,
+  Container
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 
@@ -19,8 +20,8 @@ const Profile = () => {
   const { currentUser, logout } = useAuth();
   
   const [formData, setFormData] = useState({
-    fullName: currentUser?.full_name || '',
-    email: currentUser?.email || '',
+    full_name: '',
+    email: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
@@ -29,6 +30,16 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (currentUser) {
+      setFormData(prevState => ({
+        ...prevState,
+        full_name: currentUser.full_name || '',
+        email: currentUser.email || ''
+      }));
+    }
+  }, [currentUser]);
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -36,6 +47,8 @@ const Profile = () => {
       ...prevState,
       [name]: value
     }));
+    setError('');
+    setSuccess('');
   };
   
   const handleSubmit = async (e) => {
@@ -51,21 +64,37 @@ const Profile = () => {
       setError('Aby zmienić hasło, musisz podać aktualne hasło');
       return;
     }
+
+    if (formData.newPassword && formData.newPassword.length < 8) {
+      setError('Nowe hasło musi mieć co najmniej 8 znaków');
+      return;
+    }
     
     setLoading(true);
     setError('');
     setSuccess('');
     
     try {
-      // W rzeczywistej aplikacji tutaj byłoby żądanie do endpointu aktualizacji profilu
-      // np. PUT /users/me/ z danymi formularza
-      
-      // Symulacja żądania API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Update user profile
+      const updateData = {
+        full_name: formData.full_name
+      };
+
+      // If password change is requested, add password fields
+      if (formData.newPassword) {
+        updateData.current_password = formData.currentPassword;
+        updateData.new_password = formData.newPassword;
+      }
+
+      await axios.put('/api/users/me', updateData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       
       setSuccess('Profil został zaktualizowany pomyślnie');
       
-      // Czyszczenie pól hasła
+      // Clear password fields
       setFormData(prevState => ({
         ...prevState,
         currentPassword: '',
@@ -74,154 +103,174 @@ const Profile = () => {
       }));
     } catch (err) {
       console.error('Błąd aktualizacji profilu:', err);
-      setError('Wystąpił błąd podczas aktualizacji profilu. Spróbuj ponownie później.');
+      setError(
+        err.response?.data?.detail || 
+        'Wystąpił błąd podczas aktualizacji profilu. Spróbuj ponownie później.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Profil użytkownika
-      </Typography>
-      
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-      
-      {success && (
-        <Alert severity="success" sx={{ mb: 3 }}>
-          {success}
-        </Alert>
-      )}
-      
-      <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <Avatar
-            sx={{ width: 80, height: 80, bgcolor: 'primary.main', mr: 2 }}
-          >
-            <PersonIcon sx={{ fontSize: 40 }} />
-          </Avatar>
-          <Box>
-            <Typography variant="h5">
-              {currentUser?.full_name}
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {currentUser?.email}
-            </Typography>
-          </Box>
+  if (!currentUser) {
+    return (
+      <Container>
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <CircularProgress />
         </Box>
-        
-        <Divider sx={{ my: 3 }} />
-        
-        <form onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>
-                Dane podstawowe
-              </Typography>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Imię i nazwisko"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                variant="outlined"
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Adres e-mail"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                variant="outlined"
-                disabled // Zazwyczaj nie pozwalamy na zmianę e-maila, bo służy jako login
-              />
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                Zmiana hasła
-              </Typography>
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                type="password"
-                label="Aktualne hasło"
-                name="currentPassword"
-                value={formData.currentPassword}
-                onChange={handleChange}
-                variant="outlined"
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                type="password"
-                label="Nowe hasło"
-                name="newPassword"
-                value={formData.newPassword}
-                onChange={handleChange}
-                variant="outlined"
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                type="password"
-                label="Potwierdź nowe hasło"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                variant="outlined"
-              />
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  type="submit"
-                  disabled={loading}
-                >
-                  {loading ? <CircularProgress size={24} /> : 'Zapisz zmiany'}
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </form>
-      </Paper>
-      
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Działania konta
+      </Container>
+    );
+  }
+
+  return (
+    <Container maxWidth="md">
+      <Box sx={{ py: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Profil użytkownika
         </Typography>
         
-        <Box sx={{ mt: 2 }}>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={logout}
-          >
-            Wyloguj się
-          </Button>
-        </Box>
-      </Paper>
-    </Box>
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+        
+        {success && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            {success}
+          </Alert>
+        )}
+        
+        <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+            <Avatar
+              sx={{ width: 80, height: 80, bgcolor: 'primary.main', mr: 2 }}
+            >
+              <PersonIcon sx={{ fontSize: 40 }} />
+            </Avatar>
+            <Box>
+              <Typography variant="h5">
+                {currentUser.full_name}
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                {currentUser.email}
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Divider sx={{ my: 3 }} />
+          
+          <form onSubmit={handleSubmit}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Dane podstawowe
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Imię i nazwisko"
+                  name="full_name"
+                  value={formData.full_name}
+                  onChange={handleChange}
+                  variant="outlined"
+                  required
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Adres e-mail"
+                  name="email"
+                  value={formData.email}
+                  variant="outlined"
+                  disabled
+                  helperText="Email nie może być zmieniony, ponieważ służy jako login"
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                  Zmiana hasła
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Pozostaw puste, jeśli nie chcesz zmieniać hasła
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  type="password"
+                  label="Aktualne hasło"
+                  name="currentPassword"
+                  value={formData.currentPassword}
+                  onChange={handleChange}
+                  variant="outlined"
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  type="password"
+                  label="Nowe hasło"
+                  name="newPassword"
+                  value={formData.newPassword}
+                  onChange={handleChange}
+                  variant="outlined"
+                  helperText="Minimum 8 znaków"
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  type="password"
+                  label="Potwierdź nowe hasło"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  variant="outlined"
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    type="submit"
+                    disabled={loading}
+                  >
+                    {loading ? <CircularProgress size={24} /> : 'Zapisz zmiany'}
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+          </form>
+        </Paper>
+        
+        <Paper elevation={3} sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Działania konta
+          </Typography>
+          
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={logout}
+            >
+              Wyloguj się
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+    </Container>
   );
 };
 

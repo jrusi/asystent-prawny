@@ -19,12 +19,14 @@ const Register = () => {
     confirmPassword: ''
   });
   const [formError, setFormError] = useState('');
-  const { register, error } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+    setFormError('');
   };
 
   const handleSubmit = async (e) => {
@@ -45,16 +47,24 @@ const Register = () => {
       setFormError('Hasło musi mieć co najmniej 8 znaków');
       return;
     }
+
+    // Walidacja email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setFormError('Proszę podać prawidłowy adres email');
+      return;
+    }
     
     setFormError('');
-    const success = await register({
-      email: formData.email,
-      full_name: formData.full_name,
-      password: formData.password
-    });
-    
-    if (success) {
+    setIsSubmitting(true);
+
+    try {
+      await register(formData.email, formData.password, formData.full_name);
       navigate('/login');
+    } catch (error) {
+      setFormError(error.response?.data?.detail || 'Wystąpił błąd podczas rejestracji');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -64,9 +74,9 @@ const Register = () => {
         Rejestracja
       </Typography>
       
-      {(formError || error) && (
+      {formError && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {formError || error}
+          {formError}
         </Alert>
       )}
       
@@ -74,12 +84,12 @@ const Register = () => {
         margin="normal"
         required
         fullWidth
-        id="username"
-        label="Nazwa użytkownika"
-        name="username"
-        autoComplete="username"
+        id="email"
+        label="Adres e-mail"
+        name="email"
+        autoComplete="email"
         autoFocus
-        value={formData.username}
+        value={formData.email}
         onChange={handleChange}
       />
       
@@ -92,18 +102,6 @@ const Register = () => {
         name="full_name"
         autoComplete="name"
         value={formData.full_name}
-        onChange={handleChange}
-      />
-      
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        id="email"
-        label="Adres e-mail"
-        name="email"
-        autoComplete="email"
-        value={formData.email}
         onChange={handleChange}
       />
       
@@ -136,9 +134,10 @@ const Register = () => {
         type="submit"
         fullWidth
         variant="contained"
+        disabled={isSubmitting}
         sx={{ mt: 3, mb: 2 }}
       >
-        Zarejestruj się
+        {isSubmitting ? 'Rejestracja...' : 'Zarejestruj się'}
       </Button>
       
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>

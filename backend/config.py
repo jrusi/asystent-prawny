@@ -16,10 +16,13 @@ class Settings:
     
     # Add any GitHub Codespaces URLs if they exist
     if os.getenv("CODESPACE_NAME"):
-        BACKEND_CORS_ORIGINS.extend([
-            f"https://{os.getenv('CODESPACE_NAME')}-3000.{os.getenv('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN')}",
-            f"https://{os.getenv('CODESPACE_NAME')}-8000.{os.getenv('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN')}"
-        ])
+        codespace_name = os.getenv("CODESPACE_NAME")
+        domain = os.getenv("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN")
+        if codespace_name and domain:
+            BACKEND_CORS_ORIGINS.extend([
+                f"https://{codespace_name}-{port}.{domain}"
+                for port in ["3000", "8000", "80"]  # Add any other ports you need
+            ])
     
     # Database settings
     POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
@@ -36,5 +39,19 @@ class Settings:
     MINIO_ROOT_USER: str = os.getenv("MINIO_ROOT_USER", "minioadmin")
     MINIO_ROOT_PASSWORD: str = os.getenv("MINIO_ROOT_PASSWORD", "minioadmin")
     MINIO_SECURE: bool = os.getenv("MINIO_SECURE", "false").lower() == "true"
+
+    def get_cors_origins(self) -> List[str]:
+        """Get all CORS origins including any dynamic ones"""
+        origins = self.BACKEND_CORS_ORIGINS.copy()
+        
+        # Add any custom origins from environment variable
+        if os.getenv("ADDITIONAL_CORS_ORIGINS"):
+            origins.extend(
+                origin.strip()
+                for origin in os.getenv("ADDITIONAL_CORS_ORIGINS").split(",")
+                if origin.strip()
+            )
+        
+        return origins
 
 settings = Settings() 

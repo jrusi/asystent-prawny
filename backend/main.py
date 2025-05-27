@@ -222,19 +222,25 @@ async def create_case(request: Request, db: Session = Depends(get_db)):
             )
             
         case_data = await request.json()
+        case_create = schemas.CaseCreate(**case_data)
+        
         db_case = models.Case(
-            title=case_data["title"],
-            description=case_data.get("description", ""),
+            title=case_create.title,
+            description=case_create.description or "",
             owner_id=user.id,
-            documents=[]  # Explicitly initialize documents as empty list
+            documents=[],  # Explicitly initialize documents as empty list
+            legal_acts=[],  # Initialize legal_acts as empty list
+            judgments=[]  # Initialize judgments as empty list
         )
         
         db.add(db_case)
         db.commit()
         db.refresh(db_case)
         
+        # Create response using model
+        response = schemas.CaseResponse.model_validate(db_case)
         return create_response(
-            schemas.CaseResponse.from_orm(db_case),
+            response.model_dump(),
             headers=get_cors_headers(request)
         )
     except Exception as e:

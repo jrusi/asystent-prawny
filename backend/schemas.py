@@ -16,7 +16,7 @@ class User(UserBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -27,7 +27,7 @@ class UserResponse(UserBase):
     created_at: datetime
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Schema tokenu uwierzytelniającego
 class Token(BaseModel):
@@ -54,7 +54,7 @@ class DocumentResponse(DocumentBase):
     case_id: int
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class DocumentContent(BaseModel):
     content_text: str
@@ -78,7 +78,7 @@ class LegalActResponse(LegalActBase):
     created_at: datetime
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Schematy orzeczenia sądowego
 class JudgmentBase(BaseModel):
@@ -104,7 +104,7 @@ class JudgmentResponse(JudgmentBase):
     created_at: datetime
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Schematy sprawy
 class CaseBase(BaseModel):
@@ -128,7 +128,7 @@ class CaseResponse(CaseBase):
     judgments: List[JudgmentResponse] = []
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Schematy pytania i odpowiedzi
 class QuestionCreate(BaseModel):
@@ -143,7 +143,7 @@ class QuestionResponse(BaseModel):
     case_id: int
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class AnswerCreate(BaseModel):
     answer_text: str

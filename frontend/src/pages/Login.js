@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Avatar,
@@ -19,29 +19,40 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Check for success message from registration
+    if (location.state?.message) {
+      setSuccess(location.state.message);
+      // Clear the message from location state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
     
     try {
-      const success = await login(email, password);
-      if (success) {
-        navigate('/');
-      } else {
-        setError('Nie udało się zalogować. Sprawdź swoje dane logowania.');
-      }
+      await login(email, password);
+      navigate('/dashboard');
     } catch (err) {
       console.error('Błąd logowania:', err);
-      setError('Wystąpił błąd podczas logowania. Spróbuj ponownie później.');
+      setError(
+        err.response?.data?.detail || 
+        'Nieprawidłowy email lub hasło.'
+      );
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
@@ -69,6 +80,12 @@ const Login = () => {
               Logowanie
             </Typography>
             
+            {success && (
+              <Alert severity="success" sx={{ width: '100%', mt: 2 }}>
+                {success}
+              </Alert>
+            )}
+            
             {error && (
               <Alert severity="error" sx={{ width: '100%', mt: 2 }}>
                 {error}
@@ -86,7 +103,10 @@ const Login = () => {
                 autoComplete="email"
                 autoFocus
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError('');
+                }}
               />
               <TextField
                 margin="normal"
@@ -98,7 +118,10 @@ const Login = () => {
                 id="password"
                 autoComplete="current-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError('');
+                }}
               />
               <Button
                 type="submit"
@@ -109,10 +132,15 @@ const Login = () => {
               >
                 {loading ? 'Logowanie...' : 'Zaloguj się'}
               </Button>
-              <Grid container>
-                <Grid item>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
                   <Link component={RouterLink} to="/register" variant="body2">
                     {"Nie masz konta? Zarejestruj się"}
+                  </Link>
+                </Grid>
+                <Grid item xs={12}>
+                  <Link component={RouterLink} to="/password-reset" variant="body2">
+                    {"Zapomniałeś hasła?"}
                   </Link>
                 </Grid>
               </Grid>

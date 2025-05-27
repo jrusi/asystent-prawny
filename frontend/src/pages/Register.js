@@ -59,11 +59,17 @@ const Register = () => {
     setIsSubmitting(true);
 
     try {
+      console.log('Attempting to register with:', {
+        email: formData.email,
+        fullName: formData.full_name
+      });
+
       await register(
         formData.email,
         formData.password,
         formData.full_name
       );
+
       // After successful registration, navigate to login
       navigate('/login', { 
         state: { 
@@ -72,10 +78,23 @@ const Register = () => {
       });
     } catch (error) {
       console.error('Registration error:', error);
-      setFormError(
-        error.response?.data?.detail || 
-        'Wystąpił błąd podczas rejestracji. Sprawdź czy podany email nie jest już zajęty.'
-      );
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        if (error.response.data?.detail?.includes('already registered')) {
+          setFormError('Ten adres email jest już zarejestrowany.');
+        } else if (error.response.data?.detail) {
+          setFormError(error.response.data.detail);
+        } else {
+          setFormError('Nieprawidłowe dane rejestracji. Sprawdź wprowadzone informacje.');
+        }
+      } else if (error.response?.status === 422) {
+        setFormError('Nieprawidłowy format danych. Sprawdź czy wszystkie pola są poprawnie wypełnione.');
+      } else {
+        setFormError(
+          'Wystąpił błąd podczas rejestracji. Spróbuj ponownie później.'
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }

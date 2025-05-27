@@ -225,7 +225,8 @@ async def create_case(request: Request, db: Session = Depends(get_db)):
         db_case = models.Case(
             title=case_data["title"],
             description=case_data.get("description", ""),
-            owner_id=user.id
+            owner_id=user.id,
+            documents=[]  # Explicitly initialize documents as empty list
         )
         
         db.add(db_case)

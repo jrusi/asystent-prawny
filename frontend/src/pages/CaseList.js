@@ -38,9 +38,16 @@ const CaseList = () => {
       try {
         const response = await api.get('/cases');
         console.log('Cases response:', response);
-        const casesData = response.data || [];
-        setCases(Array.isArray(casesData) ? casesData : []);
-        setFilteredCases(Array.isArray(casesData) ? casesData : []);
+        // Ensure we have a valid array of cases with required fields
+        const casesData = Array.isArray(response.data) ? response.data.map(caseItem => ({
+          ...caseItem,
+          documents: Array.isArray(caseItem.documents) ? caseItem.documents : [],
+          title: caseItem.title || 'Untitled Case',
+          description: caseItem.description || '',
+          created_at: caseItem.created_at || new Date().toISOString()
+        })) : [];
+        setCases(casesData);
+        setFilteredCases(casesData);
         setLoading(false);
       } catch (err) {
         console.error('Błąd pobierania spraw:', err);
@@ -185,7 +192,7 @@ const CaseList = () => {
                   />
                   <ListItemSecondaryAction>
                     <Chip 
-                      label={`Dokumenty: ${caseItem.documents?.length || 0}`} 
+                      label={`Dokumenty: ${Array.isArray(caseItem?.documents) ? caseItem.documents.length : 0}`} 
                       size="small" 
                       sx={{ mr: 1 }}
                     />

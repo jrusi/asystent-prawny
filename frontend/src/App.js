@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, CircularProgress } from '@mui/material';
@@ -22,7 +22,7 @@ import AuthLayout from './layouts/AuthLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Prywatna ścieżka, która wymaga zalogowania
-const PrivateRoute = ({ element }) => {
+const PrivateRoute = () => {
   const { isAuthenticated, loading, currentUser } = useAuth();
   
   console.log('PrivateRoute:', { isAuthenticated, loading, hasUser: !!currentUser });
@@ -40,11 +40,11 @@ const PrivateRoute = ({ element }) => {
     );
   }
   
-  return isAuthenticated ? element : <Navigate to="/login" />;
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
 };
 
 // Publiczna ścieżka, która przekierowuje zalogowanych użytkowników
-const PublicRoute = ({ element }) => {
+const PublicRoute = () => {
   const { isAuthenticated, loading } = useAuth();
   
   console.log('PublicRoute:', { isAuthenticated, loading });
@@ -62,7 +62,7 @@ const PublicRoute = ({ element }) => {
     );
   }
   
-  return isAuthenticated ? <Navigate to="/dashboard" /> : element;
+  return isAuthenticated ? <Navigate to="/dashboard" /> : <Outlet />;
 };
 
 // Motyw aplikacji
@@ -85,19 +85,23 @@ function App() {
         <Router>
           <Routes>
             {/* Ścieżki autoryzacji */}
-            <Route element={<AuthLayout />}>
-              <Route path="/login" element={<PublicRoute element={<Login />} />} />
-              <Route path="/register" element={<PublicRoute element={<Register />} />} />
-              <Route path="/password-reset" element={<PublicRoute element={<PasswordReset />} />} />
+            <Route element={<PublicRoute />}>
+              <Route element={<AuthLayout />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/password-reset" element={<PasswordReset />} />
+              </Route>
             </Route>
             
             {/* Ścieżki wymagające zalogowania */}
-            <Route element={<PrivateRoute element={<MainLayout />} />}>
-              <Route path="/" element={<Navigate to="/dashboard" />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/cases" element={<CaseList />} />
-              <Route path="/cases/:caseId" element={<CaseDetail />} />
-              <Route path="/profile" element={<Profile />} />
+            <Route element={<PrivateRoute />}>
+              <Route element={<MainLayout />}>
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/cases" element={<CaseList />} />
+                <Route path="/cases/:caseId" element={<CaseDetail />} />
+                <Route path="/profile" element={<Profile />} />
+              </Route>
             </Route>
             
             {/* Strona 404 */}

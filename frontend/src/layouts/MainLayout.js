@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   AppBar,
@@ -30,7 +30,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 
 const drawerWidth = 240;
 
-const MainLayout = ({ children }) => {
+const MainLayout = () => {
+  console.log('MainLayout rendering');
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -202,7 +203,7 @@ const MainLayout = ({ children }) => {
       >
         <Toolbar />
         <Container maxWidth="lg">
-          {children}
+          <Outlet />
         </Container>
       </Box>
     </Box>

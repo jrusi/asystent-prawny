@@ -238,6 +238,50 @@ async def get_cases(request: Request, db: Session = Depends(get_db)):
             headers=get_cors_headers(request)
         )
 
+@api_router.get("/cases/{case_id}", response_model=schemas.CaseResponse)
+async def get_case(case_id: int, request: Request, db: Session = Depends(get_db)):
+    """Get a specific case by ID"""
+    if request.method == "OPTIONS":
+        return Response(status_code=200, headers=get_cors_headers(request))
+        
+    try:
+        user = await get_current_active_user(request, db)
+        if not user:
+            return create_response(
+                {"detail": "Not authenticated"},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                headers=get_cors_headers(request)
+            )
+            
+        # Get the case and verify ownership
+        case = db.query(models.Case).filter(
+            models.Case.id == case_id,
+            models.Case.owner_id == user.id  # Ensure case belongs to user
+        ).first()
+        
+        if not case:
+            return create_response(
+                {"detail": "Case not found or access denied"},
+                status_code=status.HTTP_404_NOT_FOUND,
+                headers=get_cors_headers(request)
+            )
+            
+        # Convert to response model
+        response = schemas.CaseResponse.model_validate(case)
+        response_dict = response.model_dump()
+        
+        # Use custom JSON encoder for the response
+        return create_response(
+            json.loads(json.dumps(response_dict, cls=CustomJSONEncoder)),
+            headers=get_cors_headers(request)
+        )
+    except Exception as e:
+        return create_response(
+            {"detail": str(e)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            headers=get_cors_headers(request)
+        )
+
 class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime):

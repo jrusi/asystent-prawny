@@ -62,13 +62,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     console.log('Attempting login...');
     try {
-      const response = await api.post('/token', new URLSearchParams({
+      const response = await api.post('/token', {
         username: email,
         password: password
-      }), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
       });
 
       const { access_token } = response.data;

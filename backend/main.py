@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, Request, APIRouter, Depends
+from fastapi import FastAPI, HTTPException, status, Request, APIRouter, Depends, Form
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 from datetime import timedelta
@@ -109,15 +109,32 @@ async def create_user(request: Request, db: Session = Depends(get_db)):
         )
 
 @api_router.post("/token")
-async def login_for_access_token(request: Request, db: Session = Depends(get_db)):
+async def login_for_access_token(
+    request: Request,
+    db: Session = Depends(get_db),
+    username: str = Form(None),
+    password: str = Form(None)
+):
     """Login endpoint"""
     if request.method == "OPTIONS":
         return Response(status_code=200, headers=get_cors_headers(request))
         
     try:
-        form_data = await request.json()
-        user = db.query(models.User).filter(models.User.email == form_data["username"]).first()
-        if not user or not verify_password(form_data["password"], user.hashed_password):
+        # If form data is not provided, try to get JSON data
+        if username is None or password is None:
+            form_data = await request.json()
+            username = form_data.get("username") or form_data.get("email")
+            password = form_data.get("password")
+            
+        if not username or not password:
+            return create_response(
+                {"detail": "Email i hasło są wymagane"},
+                status_code=status.HTTP_400_BAD_REQUEST,
+                headers=get_cors_headers(request)
+            )
+            
+        user = db.query(models.User).filter(models.User.email == username).first()
+        if not user or not verify_password(password, user.hashed_password):
             return create_response(
                 {"detail": "Niepoprawny email lub hasło"},
                 status_code=status.HTTP_401_UNAUTHORIZED,

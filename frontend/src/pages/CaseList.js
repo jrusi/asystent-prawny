@@ -36,13 +36,17 @@ const CaseList = () => {
   useEffect(() => {
     const fetchCases = async () => {
       try {
-        const response = await api.get('/cases');  // Use api instance and correct path
-        setCases(response.data);
-        setFilteredCases(response.data);
+        const response = await api.get('/cases');
+        console.log('Cases response:', response);
+        const casesData = response.data || [];
+        setCases(Array.isArray(casesData) ? casesData : []);
+        setFilteredCases(Array.isArray(casesData) ? casesData : []);
         setLoading(false);
       } catch (err) {
         console.error('Błąd pobierania spraw:', err);
         setError('Nie udało się pobrać listy spraw. Spróbuj ponownie później.');
+        setCases([]);
+        setFilteredCases([]);
         setLoading(false);
       }
     };
@@ -52,12 +56,17 @@ const CaseList = () => {
 
   useEffect(() => {
     // Filtrowanie spraw na podstawie wyszukiwanego terminu
+    if (!Array.isArray(cases)) {
+      setFilteredCases([]);
+      return;
+    }
+    
     if (searchTerm.trim() === '') {
       setFilteredCases(cases);
     } else {
       const filtered = cases.filter(caseItem => 
-        caseItem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        caseItem.description.toLowerCase().includes(searchTerm.toLowerCase())
+        caseItem?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        caseItem?.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredCases(filtered);
     }
@@ -117,14 +126,14 @@ const CaseList = () => {
 
       <Paper elevation={3}>
         <List sx={{ width: '100%', bgcolor: 'background.paper' }}>
-          {filteredCases.length === 0 ? (
+          {!Array.isArray(filteredCases) || filteredCases.length === 0 ? (
             <Box sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="body1" color="text.secondary">
-                {cases.length === 0 
+                {!Array.isArray(cases) || cases.length === 0 
                   ? "Nie masz jeszcze żadnych spraw. Utwórz nową sprawę, aby rozpocząć."
                   : "Nie znaleziono spraw pasujących do kryteriów wyszukiwania."}
               </Typography>
-              {cases.length === 0 && (
+              {(!Array.isArray(cases) || cases.length === 0) && (
                 <Button
                   variant="contained"
                   color="primary"
@@ -139,7 +148,7 @@ const CaseList = () => {
             </Box>
           ) : (
             filteredCases.map((caseItem, index) => (
-              <React.Fragment key={caseItem.id}>
+              <React.Fragment key={caseItem?.id || index}>
                 {index > 0 && <Divider variant="inset" component="li" />}
                 <ListItem 
                   alignItems="flex-start"

@@ -37,10 +37,10 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         console.log('Fetching cases...');
-        // Pobieranie listy spraw
         const casesResponse = await api.get('/cases');
-        console.log('Cases response:', casesResponse.data);
-        setCases(Array.isArray(casesResponse.data) ? casesResponse.data : []);
+        console.log('Cases response:', casesResponse);
+        const casesData = casesResponse.data || [];
+        setCases(Array.isArray(casesData) ? casesData : []);
         
         // Tutaj moglibyśmy pobierać najnowsze dokumenty, ale dla uproszczenia
         // użyjemy przykładowych danych
@@ -50,14 +50,14 @@ const Dashboard = () => {
             filename: 'pozew.pdf',
             document_type: 'pozew',
             created_at: new Date(),
-            case_id: casesResponse.data?.[0]?.id || 1
+            case_id: casesData?.[0]?.id || 1
           },
           {
             id: 2,
             filename: 'odpowiedz_na_pozew.pdf',
             document_type: 'odpowiedź na pozew',
             created_at: new Date(),
-            case_id: casesResponse.data?.[0]?.id || 1
+            case_id: casesData?.[0]?.id || 1
           }
         ]);
         
@@ -126,7 +126,7 @@ const Dashboard = () => {
                 <List>
                   {cases.slice(0, 5).map((caseItem) => (
                     <ListItem
-                      key={caseItem.id}
+                      key={caseItem?.id}
                       button
                       component={RouterLink}
                       to={`/cases/${caseItem.id}`}

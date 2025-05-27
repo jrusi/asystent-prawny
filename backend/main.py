@@ -206,6 +206,43 @@ async def get_cases(request: Request, db: Session = Depends(get_db)):
             headers=get_cors_headers(request)
         )
 
+@api_router.post("/cases", response_model=schemas.CaseResponse)
+async def create_case(request: Request, db: Session = Depends(get_db)):
+    """Create a new case"""
+    if request.method == "OPTIONS":
+        return Response(status_code=200, headers=get_cors_headers(request))
+        
+    try:
+        user = await get_current_active_user(request, db)
+        if not user:
+            return create_response(
+                {"detail": "Not authenticated"},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                headers=get_cors_headers(request)
+            )
+            
+        case_data = await request.json()
+        db_case = models.Case(
+            title=case_data["title"],
+            description=case_data.get("description", ""),
+            owner_id=user.id
+        )
+        
+        db.add(db_case)
+        db.commit()
+        db.refresh(db_case)
+        
+        return create_response(
+            schemas.CaseResponse.from_orm(db_case),
+            headers=get_cors_headers(request)
+        )
+    except Exception as e:
+        return create_response(
+            {"detail": str(e)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            headers=get_cors_headers(request)
+        )
+
 # Add router to app
 app.include_router(api_router)
 

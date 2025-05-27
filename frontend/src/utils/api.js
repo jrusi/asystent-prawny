@@ -6,7 +6,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true,  // Important for CORS with credentials
+  withCredentials: false,  // We're using token auth, not cookies
 });
 
 // Add a request interceptor
@@ -30,7 +30,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Clear token and user data on 401 errors
       localStorage.removeItem('token');
-      // You might want to trigger a logout action here
+      // Redirect to login if not already there
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

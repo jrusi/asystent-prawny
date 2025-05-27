@@ -18,10 +18,16 @@ import {
   InputAdornment,
   CircularProgress,
   Alert,
-  Chip
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle
 } from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -32,6 +38,8 @@ const CaseList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [caseToDelete, setCaseToDelete] = useState(null);
 
   useEffect(() => {
     const fetchCases = async () => {
@@ -81,6 +89,33 @@ const CaseList = () => {
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
+  };
+
+  const handleDeleteClick = (e, caseItem) => {
+    e.preventDefault(); // Prevent navigation to case details
+    e.stopPropagation(); // Prevent event bubbling
+    setCaseToDelete(caseItem);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!caseToDelete) return;
+    
+    try {
+      await api.delete(`/cases/${caseToDelete.id}`);
+      setCases(prevCases => prevCases.filter(c => c.id !== caseToDelete.id));
+      setFilteredCases(prevCases => prevCases.filter(c => c.id !== caseToDelete.id));
+      setDeleteDialogOpen(false);
+      setCaseToDelete(null);
+    } catch (err) {
+      console.error('Błąd podczas usuwania sprawy:', err);
+      setError('Nie udało się usunąć sprawy. Spróbuj ponownie później.');
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setCaseToDelete(null);
   };
 
   if (loading) {
@@ -196,6 +231,20 @@ const CaseList = () => {
                       size="small" 
                       sx={{ mr: 1 }}
                     />
+                    <IconButton 
+                      edge="end" 
+                      aria-label="delete"
+                      onClick={(e) => handleDeleteClick(e, caseItem)}
+                      sx={{ 
+                        color: 'error.main',
+                        '&:hover': {
+                          backgroundColor: 'error.light',
+                          color: 'error.dark',
+                        }
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
                   </ListItemSecondaryAction>
                 </ListItem>
               </React.Fragment>
@@ -203,6 +252,31 @@ const CaseList = () => {
           )}
         </List>
       </Paper>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Czy na pewno chcesz usunąć tę sprawę?"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Ta operacja jest nieodwracalna. Wszystkie dokumenty i dane związane z tą sprawą zostaną usunięte.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="primary">
+            Anuluj
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
+            Usuń
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

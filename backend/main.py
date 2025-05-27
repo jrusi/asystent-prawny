@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
 from typing import Dict, Any, List
 import json
+import os
+import shutil
 
 from database import get_db
 import models
@@ -265,6 +267,75 @@ async def create_case(request: Request, db: Session = Depends(get_db)):
             headers=get_cors_headers(request)
         )
     except Exception as e:
+        return create_response(
+            {"detail": str(e)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            headers=get_cors_headers(request)
+        )
+
+@api_router.delete("/cases/{case_id}")
+async def delete_case(case_id: int, request: Request, db: Session = Depends(get_db)):
+    """Delete a case and all its associated files"""
+    if request.method == "OPTIONS":
+        return Response(status_code=200, headers=get_cors_headers(request))
+        
+    try:
+        user = await get_current_active_user(request, db)
+        if not user:
+            return create_response(
+                {"detail": "Not authenticated"},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                headers=get_cors_headers(request)
+            )
+            
+        # Get the case and verify ownership
+        case = db.query(models.Case).filter(models.Case.id == case_id).first()
+        if not case:
+            return create_response(
+                {"detail": "Case not found"},
+                status_code=status.HTTP_404_NOT_FOUND,
+                headers=get_cors_headers(request)
+            )
+            
+        if case.owner_id != user.id:
+            return create_response(
+                {"detail": "Not authorized to delete this case"},
+                status_code=status.HTTP_403_FORBIDDEN,
+                headers=get_cors_headers(request)
+            )
+            
+        # Delete all associated files
+        try:
+            # Delete document files
+            for document in case.documents:
+                if document.file_path and os.path.exists(document.file_path):
+                    try:
+                        os.remove(document.file_path)
+                    except Exception as e:
+                        print(f"Error deleting document file {document.file_path}: {str(e)}")
+            
+            # Delete case directory if it exists
+            case_dir = os.path.join('uploads', f'case_{case.id}')
+            if os.path.exists(case_dir):
+                try:
+                    shutil.rmtree(case_dir)
+                except Exception as e:
+                    print(f"Error deleting case directory {case_dir}: {str(e)}")
+                    
+        except Exception as e:
+            print(f"Error during file cleanup for case {case.id}: {str(e)}")
+            # Continue with database deletion even if file deletion fails
+            
+        # Delete the case from database (this will cascade delete related records)
+        db.delete(case)
+        db.commit()
+        
+        return create_response(
+            {"detail": "Case and all associated files deleted successfully"},
+            headers=get_cors_headers(request)
+        )
+    except Exception as e:
+        db.rollback()  # Rollback transaction on error
         return create_response(
             {"detail": str(e)},
             status_code=status.HTTP_400_BAD_REQUEST,

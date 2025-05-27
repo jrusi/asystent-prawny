@@ -55,30 +55,39 @@ app = FastAPI(
     version=settings.VERSION
 )
 
-# Middleware to handle OPTIONS requests
-@app.middleware("http")
-async def handle_options(request: Request, call_next):
-    if request.method == "OPTIONS":
-        headers = {
-            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Authorization, Content-Type",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Max-Age": "600",  # Cache preflight response for 10 minutes
-        }
-        return JSONResponse(status_code=200, content={"message": "OK"}, headers=headers)
-    response = await call_next(request)
-    return response
-
-# Konfiguracja CORS
+# Configure CORS first
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
+    expose_headers=["*"],
+    max_age=600  # Cache preflight response for 10 minutes
 )
+
+# Public endpoints that don't require authentication
+public_endpoints = [
+    "/api/token",
+    "/api/users",
+    "/api/health",
+    "/api",
+    "/docs",
+    "/openapi.json"
+]
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    
+    # Always allow OPTIONS requests and public endpoints
+    if request.method == "OPTIONS" or any(path.rstrip("/") == endpoint.rstrip("/") for endpoint in public_endpoints):
+        response = await call_next(request)
+        return response
+
+    # For all other requests, continue with normal flow
+    response = await call_next(request)
+    return response
 
 # Utworzenie routera API
 api_router = APIRouter(prefix="/api")
@@ -102,28 +111,6 @@ async def health_check():
         },
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
-
-# Public endpoints that don't require authentication
-public_endpoints = [
-    "/api/token",
-    "/api/users",
-    "/api/health",
-    "/api"
-]
-
-@app.middleware("http")
-async def auth_middleware(request: Request, call_next):
-    # Always allow OPTIONS requests
-    if request.method == "OPTIONS":
-        return await call_next(request)
-        
-    # Skip authentication for public endpoints
-    if any(request.url.path.endswith(endpoint.strip("/")) for endpoint in public_endpoints):
-        return await call_next(request)
-
-    # Continue with authentication for other requests
-    response = await call_next(request)
-    return response
 
 # Endpointy uwierzytelniania
 @api_router.post("/token")  # Remove trailing slash

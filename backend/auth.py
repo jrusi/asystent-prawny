@@ -21,18 +21,20 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class CustomOAuth2PasswordBearer(OAuth2PasswordBearer):
     async def __call__(self, request: Request) -> Optional[str]:
         # List of endpoints that don't require authentication
-        public_endpoints = ["/api/token", "/api/users", "/api/health", "/api"]
+        public_endpoints = ["/api/token", "/api/users", "/api/health", "/api", "/docs", "/openapi.json"]
         
         # Skip authentication for OPTIONS requests and public endpoints
-        if request.method == "OPTIONS" or any(request.url.path.endswith(endpoint.strip("/")) for endpoint in public_endpoints):
+        path = request.url.path
+        if request.method == "OPTIONS" or any(path.rstrip("/") == endpoint.rstrip("/") for endpoint in public_endpoints):
             return None
-            
+        
+        # For other endpoints, try to get the token but don't fail if it's a public endpoint
         try:
             return await super().__call__(request)
-        except HTTPException as e:
-            if any(request.url.path.endswith(endpoint.strip("/")) for endpoint in public_endpoints):
+        except HTTPException:
+            if any(path.rstrip("/") == endpoint.rstrip("/") for endpoint in public_endpoints):
                 return None
-            raise e
+            raise
 
 oauth2_scheme = CustomOAuth2PasswordBearer(tokenUrl="api/token")
 

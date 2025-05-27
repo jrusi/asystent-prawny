@@ -55,18 +55,6 @@ app = FastAPI(
     version=settings.VERSION
 )
 
-# Configure CORS first
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.get_cors_origins(),
-    allow_origin_regex=r"https://.*\.app\.github\.dev",  # Allow all GitHub Codespaces subdomains
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=600  # Cache preflight response for 10 minutes
-)
-
 # Public endpoints that don't require authentication
 public_endpoints = [
     "/api/token",
@@ -77,14 +65,30 @@ public_endpoints = [
     "/openapi.json"
 ]
 
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.get_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=600,  # Cache preflight response for 10 minutes
+)
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    path = request.url.path
-    
-    # Always allow OPTIONS requests and public endpoints
-    if request.method == "OPTIONS" or any(path.rstrip("/") == endpoint.rstrip("/") for endpoint in public_endpoints):
+    # Always allow OPTIONS requests without authentication
+    if request.method == "OPTIONS":
         response = await call_next(request)
         return response
+
+    # Skip authentication for public endpoints
+    path = request.url.path
+    for endpoint in public_endpoints:
+        if path.rstrip("/") == f"/api{endpoint.rstrip('/')}" or path.rstrip("/") == endpoint.rstrip("/"):
+            response = await call_next(request)
+            return response
 
     # For all other requests, continue with normal flow
     response = await call_next(request)

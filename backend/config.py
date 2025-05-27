@@ -19,10 +19,10 @@ class Settings:
         codespace_name = os.getenv("CODESPACE_NAME")
         domain = os.getenv("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev")
         if codespace_name:
-            # Add wildcard for all subdomains of the codespace
+            # Add specific Codespaces URLs
             BACKEND_CORS_ORIGINS.extend([
-                f"https://{codespace_name}-*{domain}",  # Wildcard for all ports
-                f"https://*.{domain}"  # Broader wildcard as fallback
+                f"https://{codespace_name}-3000.{domain}",  # Frontend URL
+                f"https://{codespace_name}-8000.{domain}",  # Backend URL
             ])
     
     # Database settings
@@ -52,10 +52,9 @@ class Settings:
                 for origin in os.getenv("ADDITIONAL_CORS_ORIGINS").split(",")
                 if origin.strip()
             )
-            
-        # For development in Codespaces, allow all GitHub dev domains
-        if any("app.github.dev" in origin for origin in origins):
-            origins.append("https://*.app.github.dev")
+        
+        # Print origins for debugging
+        print("Allowed CORS origins:", origins)
         
         return origins
 

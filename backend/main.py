@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, status, Request, APIRouter, Depends, Form, File, UploadFile
 from fastapi.responses import JSONResponse, Response
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
 from typing import Dict, Any, List
@@ -22,6 +23,15 @@ app = FastAPI(
     version=settings.VERSION
 )
 
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Initialize MinIO client
 minio_client = MinioClient(
     endpoint=settings.MINIO_ENDPOINT,
@@ -31,6 +41,9 @@ minio_client = MinioClient(
 
 # Create API router
 api_router = APIRouter(prefix="/api")
+
+# Configure maximum upload size (100MB)
+MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100MB in bytes
 
 def get_cors_headers(request: Request) -> Dict[str, str]:
     """Get CORS headers for response"""
@@ -350,6 +363,27 @@ async def upload_document(
         return Response(status_code=200, headers=get_cors_headers(request))
         
     try:
+        # Check file size before reading
+        file_size = 0
+        chunk_size = 1024 * 1024  # 1MB chunks
+        content = bytearray()
+        
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            file_size += len(chunk)
+            if file_size > MAX_UPLOAD_SIZE:
+                return create_response(
+                    {"detail": f"File size exceeds maximum limit of {MAX_UPLOAD_SIZE // (1024 * 1024)}MB"},
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    headers=get_cors_headers(request)
+                )
+            content.extend(chunk)
+            
+        # Reset file position for potential re-read
+        await file.seek(0)
+        
         user = await get_current_active_user(request, db)
         if not user:
             return create_response(
@@ -378,10 +412,7 @@ async def upload_document(
         safe_filename = f"{timestamp}{file_extension}"
         object_path = f"users/{user.id}/cases/{case.id}/documents/{safe_filename}"
         
-        # Read file content
-        content = await file.read()
-        
-        # Upload to MinIO
+        # Use the content we've already read
         minio_client.upload_file(object_path, content)
         
         # Determine file type if not provided

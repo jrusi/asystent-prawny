@@ -59,16 +59,14 @@ app = FastAPI(
 @app.middleware("http")
 async def handle_options(request: Request, call_next):
     if request.method == "OPTIONS":
-        return JSONResponse(
-            status_code=200,
-            content={"message": "OK"},
-            headers={
-                "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
-                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-                "Access-Control-Allow-Headers": "Authorization, Content-Type",
-                "Access-Control-Allow-Credentials": "true",
-            },
-        )
+        headers = {
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "600",  # Cache preflight response for 10 minutes
+        }
+        return JSONResponse(status_code=200, content={"message": "OK"}, headers=headers)
     response = await call_next(request)
     return response
 
@@ -115,8 +113,12 @@ public_endpoints = [
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    # Skip authentication for OPTIONS requests and public endpoints
-    if request.method == "OPTIONS" or any(request.url.path.startswith(endpoint) for endpoint in public_endpoints):
+    # Always allow OPTIONS requests
+    if request.method == "OPTIONS":
+        return await call_next(request)
+        
+    # Skip authentication for public endpoints
+    if any(request.url.path.endswith(endpoint.strip("/")) for endpoint in public_endpoints):
         return await call_next(request)
 
     # Continue with authentication for other requests

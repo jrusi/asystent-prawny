@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, Request, APIRouter, Depends, Form
+from fastapi import FastAPI, HTTPException, status, Request, APIRouter, Depends, Form, File, UploadFile
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
@@ -6,17 +6,27 @@ from typing import Dict, Any, List
 import json
 import os
 import shutil
+import mimetypes
+from pathlib import Path
 
 from database import get_db
 import models
 import schemas
 from auth import create_access_token, get_current_active_user, get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
 from config import settings
+from storage import MinioClient
 
 # Create FastAPI application
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION
+)
+
+# Initialize MinIO client
+minio_client = MinioClient(
+    endpoint=settings.MINIO_ENDPOINT,
+    access_key=settings.MINIO_ACCESS_KEY,
+    secret_key=settings.MINIO_SECRET_KEY
 )
 
 # Create API router
@@ -289,42 +299,26 @@ async def delete_case(case_id: int, request: Request, db: Session = Depends(get_
             )
             
         # Get the case and verify ownership
-        case = db.query(models.Case).filter(models.Case.id == case_id).first()
+        case = db.query(models.Case).filter(
+            models.Case.id == case_id,
+            models.Case.owner_id == user.id  # Ensure case belongs to user
+        ).first()
+        
         if not case:
             return create_response(
-                {"detail": "Case not found"},
+                {"detail": "Case not found or access denied"},
                 status_code=status.HTTP_404_NOT_FOUND,
                 headers=get_cors_headers(request)
             )
             
-        if case.owner_id != user.id:
-            return create_response(
-                {"detail": "Not authorized to delete this case"},
-                status_code=status.HTTP_403_FORBIDDEN,
-                headers=get_cors_headers(request)
-            )
-            
-        # Delete all associated files
+        # Delete all associated files from MinIO
         try:
-            # Delete document files
-            for document in case.documents:
-                if document.file_path and os.path.exists(document.file_path):
-                    try:
-                        os.remove(document.file_path)
-                    except Exception as e:
-                        print(f"Error deleting document file {document.file_path}: {str(e)}")
-            
-            # Delete case directory if it exists
-            case_dir = os.path.join('uploads', f'case_{case.id}')
-            if os.path.exists(case_dir):
-                try:
-                    shutil.rmtree(case_dir)
-                except Exception as e:
-                    print(f"Error deleting case directory {case_dir}: {str(e)}")
-                    
+            # Delete case directory and all its contents from MinIO
+            case_path = f"users/{user.id}/cases/{case.id}"
+            minio_client.delete_case_directory(case_path)
         except Exception as e:
-            print(f"Error during file cleanup for case {case.id}: {str(e)}")
-            # Continue with database deletion even if file deletion fails
+            print(f"Error during MinIO cleanup for case {case.id}: {str(e)}")
+            # Continue with database deletion even if MinIO cleanup fails
             
         # Delete the case from database (this will cascade delete related records)
         db.delete(case)
@@ -336,6 +330,147 @@ async def delete_case(case_id: int, request: Request, db: Session = Depends(get_
         )
     except Exception as e:
         db.rollback()  # Rollback transaction on error
+        return create_response(
+            {"detail": str(e)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            headers=get_cors_headers(request)
+        )
+
+@api_router.post("/cases/{case_id}/documents", response_model=schemas.DocumentResponse)
+async def upload_document(
+    case_id: int,
+    file: UploadFile = File(...),
+    document_type: str = Form(None),
+    description: str = Form(None),
+    request: Request = None,
+    db: Session = Depends(get_db)
+):
+    """Upload a document to a case"""
+    if request.method == "OPTIONS":
+        return Response(status_code=200, headers=get_cors_headers(request))
+        
+    try:
+        user = await get_current_active_user(request, db)
+        if not user:
+            return create_response(
+                {"detail": "Not authenticated"},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                headers=get_cors_headers(request)
+            )
+            
+        # Get the case and verify ownership
+        case = db.query(models.Case).filter(
+            models.Case.id == case_id,
+            models.Case.owner_id == user.id  # Ensure case belongs to user
+        ).first()
+        
+        if not case:
+            return create_response(
+                {"detail": "Case not found or access denied"},
+                status_code=status.HTTP_404_NOT_FOUND,
+                headers=get_cors_headers(request)
+            )
+            
+        # Generate unique object name for MinIO with user isolation
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        original_filename = file.filename
+        file_extension = os.path.splitext(original_filename)[1]
+        safe_filename = f"{timestamp}{file_extension}"
+        object_path = f"users/{user.id}/cases/{case.id}/documents/{safe_filename}"
+        
+        # Read file content
+        content = await file.read()
+        
+        # Upload to MinIO
+        minio_client.upload_file(object_path, content)
+        
+        # Determine file type if not provided
+        if not document_type:
+            mime_type, _ = mimetypes.guess_type(original_filename)
+            document_type = mime_type if mime_type else "application/octet-stream"
+            
+        # Create document record
+        db_document = models.Document(
+            title=original_filename,
+            description=description,
+            file_path=object_path,  # Store MinIO object path
+            file_type=document_type,
+            case_id=case.id
+        )
+        
+        db.add(db_document)
+        db.commit()
+        db.refresh(db_document)
+        
+        # Convert to response model
+        response = schemas.DocumentResponse.model_validate(db_document)
+        response_dict = response.model_dump()
+        
+        return create_response(
+            json.loads(json.dumps(response_dict, cls=CustomJSONEncoder)),
+            headers=get_cors_headers(request)
+        )
+    except Exception as e:
+        # If document was created in DB but MinIO upload failed, clean up
+        if 'db_document' in locals():
+            db.delete(db_document)
+            db.commit()
+            
+        return create_response(
+            {"detail": str(e)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            headers=get_cors_headers(request)
+        )
+
+@api_router.get("/cases/{case_id}/documents/{document_id}")
+async def get_document(
+    case_id: int,
+    document_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Get a document from a case"""
+    if request.method == "OPTIONS":
+        return Response(status_code=200, headers=get_cors_headers(request))
+        
+    try:
+        user = await get_current_active_user(request, db)
+        if not user:
+            return create_response(
+                {"detail": "Not authenticated"},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                headers=get_cors_headers(request)
+            )
+            
+        # Get the document and verify ownership through case
+        document = db.query(models.Document).join(
+            models.Case
+        ).filter(
+            models.Document.id == document_id,
+            models.Document.case_id == case_id,
+            models.Case.owner_id == user.id  # Ensure case belongs to user
+        ).first()
+        
+        if not document:
+            return create_response(
+                {"detail": "Document not found or access denied"},
+                status_code=status.HTTP_404_NOT_FOUND,
+                headers=get_cors_headers(request)
+            )
+            
+        # Get file content from MinIO
+        content = minio_client.download_file(document.file_path)
+        
+        # Return file content with appropriate headers
+        return Response(
+            content=content,
+            media_type=document.file_type,
+            headers={
+                **get_cors_headers(request),
+                "Content-Disposition": f'attachment; filename="{document.title}"'
+            }
+        )
+    except Exception as e:
         return create_response(
             {"detail": str(e)},
             status_code=status.HTTP_400_BAD_REQUEST,

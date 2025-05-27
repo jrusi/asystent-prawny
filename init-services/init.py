@@ -5,6 +5,12 @@ from minio import Minio
 from minio.error import S3Error
 from elasticsearch import Elasticsearch
 import logging
+import sys
+
+# Add backend directory to Python path
+sys.path.append('/app')
+
+from models import Base
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,9 +27,9 @@ def init_db():
     for attempt in range(10):
         try:
             engine = create_engine(DATABASE_URL)
-            conn = engine.connect()
-            conn.close()
-            logger.info("Połączenie z bazą danych ustanowione.")
+            # Create all tables
+            Base.metadata.create_all(engine)
+            logger.info("Tabele bazy danych zostały utworzone.")
             return True
         except Exception as e:
             logger.warning(f"Próba {attempt+1}/10: Nie można połączyć się z bazą danych: {e}")
@@ -63,16 +69,16 @@ def init_elasticsearch():
     logger.info("Inicjalizacja Elasticsearch...")
     for attempt in range(10):
         try:
-            es = Elasticsearch([ELASTIC_URL])
+            es = Elasticsearch(ELASTIC_URL)
             if es.ping():
                 logger.info("Połączenie z Elasticsearch ustanowione.")
                 return True
             else:
-                logger.warning(f"Próba {attempt+1}/10: Elasticsearch nie odpowiada.")
+                logger.warning(f"Próba {attempt+1}/10: Elasticsearch nie odpowiada")
+                time.sleep(5)
         except Exception as e:
             logger.warning(f"Próba {attempt+1}/10: Nie można połączyć się z Elasticsearch: {e}")
-        
-        time.sleep(5)
+            time.sleep(5)
     
     logger.error("Nie udało się połączyć z Elasticsearch po 10 próbach.")
     return False

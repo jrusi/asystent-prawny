@@ -2,10 +2,11 @@ from fastapi import FastAPI, HTTPException, status, Request, APIRouter, Depends,
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 from datetime import timedelta
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from database import get_db
 import models
+import schemas
 from auth import create_access_token, get_current_active_user, get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
 from config import settings
 
@@ -177,6 +178,33 @@ async def read_users_me(request: Request, db: Session = Depends(get_db)):
         },
         headers=get_cors_headers(request)
     )
+
+@api_router.get("/cases", response_model=List[schemas.CaseResponse])
+async def get_cases(request: Request, db: Session = Depends(get_db)):
+    """Get all cases for the current user"""
+    if request.method == "OPTIONS":
+        return Response(status_code=200, headers=get_cors_headers(request))
+        
+    try:
+        user = await get_current_active_user(request, db)
+        if not user:
+            return create_response(
+                {"detail": "Not authenticated"},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                headers=get_cors_headers(request)
+            )
+            
+        cases = db.query(models.Case).filter(models.Case.owner_id == user.id).all()
+        return create_response(
+            [schemas.CaseResponse.from_orm(case) for case in cases],
+            headers=get_cors_headers(request)
+        )
+    except Exception as e:
+        return create_response(
+            {"detail": str(e)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            headers=get_cors_headers(request)
+        )
 
 # Add router to app
 app.include_router(api_router)

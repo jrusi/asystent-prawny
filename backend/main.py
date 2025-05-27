@@ -1,12 +1,12 @@
 from fastapi import FastAPI, HTTPException, status, Request, APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from database import get_db
 import models
 from auth import create_access_token, get_current_active_user, get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
-from middleware import cors_middleware, error_middleware
 from config import settings
 
 # Create FastAPI application
@@ -15,12 +15,24 @@ app = FastAPI(
     version=settings.VERSION
 )
 
-# Add our custom middleware
-app.middleware("http")(cors_middleware)
-app.middleware("http")(error_middleware)
+# Add CORS middleware first, before any other middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=600,
+)
 
 # Create API router
 api_router = APIRouter(prefix="/api")
+
+@api_router.options("/{path:path}")
+async def options_handler(request: Request):
+    """Global OPTIONS handler for all routes"""
+    return Response(status_code=200)
 
 @api_router.post("/users")
 async def create_user(request: Request, db: Session = Depends(get_db)):

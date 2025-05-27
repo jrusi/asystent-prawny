@@ -37,6 +37,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 async def get_current_user(request: Request, db: Session) -> Optional[models.User]:
     """Get current user from JWT token in Authorization header"""
+    # Always allow OPTIONS requests
+    if request.method == "OPTIONS":
+        return None
+        
     # Public endpoints don't require authentication
     public_endpoints = ["/api/token", "/api/users", "/api/health", "/api", "/docs", "/openapi.json"]
     for endpoint in public_endpoints:
@@ -62,6 +66,10 @@ async def get_current_user(request: Request, db: Session) -> Optional[models.Use
 
 async def get_current_active_user(request: Request, db: Session) -> Optional[models.User]:
     """Get current active user"""
+    # Always allow OPTIONS requests
+    if request.method == "OPTIONS":
+        return None
+        
     user = await get_current_user(request, db)
     if user and not user.is_active:
         raise HTTPException(status_code=400, detail="Nieaktywny użytkownik")

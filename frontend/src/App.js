@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { Box, CircularProgress } from '@mui/material';
 
 // Komponenty stron
 import Login from './pages/Login';
@@ -22,10 +23,21 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Prywatna ścieżka, która wymaga zalogowania
 const PrivateRoute = ({ element }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, currentUser } = useAuth();
+  
+  console.log('PrivateRoute:', { isAuthenticated, loading, hasUser: !!currentUser });
   
   if (loading) {
-    return null; // lub komponent ładowania
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh' 
+      }}>
+        <CircularProgress />
+      </Box>
+    );
   }
   
   return isAuthenticated ? element : <Navigate to="/login" />;
@@ -35,8 +47,19 @@ const PrivateRoute = ({ element }) => {
 const PublicRoute = ({ element }) => {
   const { isAuthenticated, loading } = useAuth();
   
+  console.log('PublicRoute:', { isAuthenticated, loading });
+  
   if (loading) {
-    return null; // lub komponent ładowania
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh' 
+      }}>
+        <CircularProgress />
+      </Box>
+    );
   }
   
   return isAuthenticated ? <Navigate to="/dashboard" /> : element;

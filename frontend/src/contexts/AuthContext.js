@@ -11,8 +11,25 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
+  console.log('AuthProvider rendering, token:', token ? 'exists' : 'none');
+
+  const fetchUserData = async (authToken) => {
+    console.log('Fetching user data...');
+    try {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+      const response = await axios.get('/api/users/me');
+      console.log('User data received:', response.data);
+      setCurrentUser(response.data);
+      return true;
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const initAuth = async () => {
+      console.log('Initializing authentication...');
       if (token) {
         try {
           // Sprawdzenie ważności tokenu
@@ -20,20 +37,22 @@ export const AuthProvider = ({ children }) => {
           const currentTime = Date.now() / 1000;
           
           if (decodedToken.exp < currentTime) {
-            // Token wygasł
+            console.log('Token expired');
             logout();
           } else {
-            // Ustawienie tokenu w nagłówkach Axios
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            
-            // Pobranie informacji o użytkowniku
-            const response = await axios.get('/api/users/me');
-            setCurrentUser(response.data);
+            console.log('Token valid, fetching user data');
+            const success = await fetchUserData(token);
+            if (!success) {
+              console.log('Failed to fetch user data, logging out');
+              logout();
+            }
           }
         } catch (error) {
-          console.error('Błąd podczas inicjalizacji autoryzacji:', error);
+          console.error('Error during auth initialization:', error);
           logout();
         }
+      } else {
+        console.log('No token found');
       }
       setLoading(false);
     };
@@ -42,6 +61,7 @@ export const AuthProvider = ({ children }) => {
   }, [token]);
 
   const login = async (email, password) => {
+    console.log('Attempting login...');
     try {
       const response = await axios.post('/api/token', new URLSearchParams({
         username: email,
@@ -53,27 +73,26 @@ export const AuthProvider = ({ children }) => {
       });
 
       const { access_token } = response.data;
+      console.log('Login successful, token received');
+      
       localStorage.setItem('token', access_token);
       setToken(access_token);
       
-      // Ustawienie tokenu w nagłówkach Axios
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      
-      // Pobranie informacji o użytkowniku
-      const userResponse = await axios.get('/api/users/me');
-      setCurrentUser(userResponse.data);
+      const success = await fetchUserData(access_token);
+      if (!success) {
+        throw new Error('Failed to fetch user data after login');
+      }
       
       return true;
     } catch (error) {
-      console.error('Błąd logowania:', error);
+      console.error('Login error:', error);
       throw error;
     }
   };
 
   const register = async (email, password, fullName) => {
+    console.log('Attempting registration...');
     try {
-      console.log('Attempting registration with:', { email, fullName });
-      
       const response = await axios.post('/api/users', {
         email: email,
         password: password,
@@ -84,22 +103,16 @@ export const AuthProvider = ({ children }) => {
         }
       });
 
-      console.log('Registration response:', response.data);
-      
-      // Po rejestracji automatycznie logujemy
+      console.log('Registration successful:', response.data);
       return await login(email, password);
     } catch (error) {
-      console.error('Registration error details:', {
-        error: error,
-        response: error.response?.data,
-        status: error.response?.status,
-        headers: error.response?.headers
-      });
+      console.error('Registration error:', error);
       throw error;
     }
   };
 
   const logout = () => {
+    console.log('Logging out...');
     localStorage.removeItem('token');
     setToken(null);
     setCurrentUser(null);
@@ -114,6 +127,11 @@ export const AuthProvider = ({ children }) => {
     register,
     logout
   };
+
+  console.log('AuthContext state:', { 
+    hasCurrentUser: !!currentUser, 
+    isLoading: loading 
+  });
 
   return (
     <AuthContext.Provider value={value}>

@@ -16,6 +16,12 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Don't override Content-Type for multipart/form-data
+    if (config.headers['Content-Type'] === 'multipart/form-data') {
+      delete config.headers['Content-Type'];  // Let axios set the correct boundary
+    }
+    
     return config;
   },
   (error) => {

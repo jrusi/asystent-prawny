@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import {
   Typography,
   Box,
@@ -101,7 +101,7 @@ const CaseDetail = () => {
   useEffect(() => {
     const fetchCaseData = async () => {
       try {
-        const response = await axios.get(`/cases/${caseId}`);
+        const response = await api.get(`/cases/${caseId}`);
         // Ensure documents array is initialized
         const caseData = {
           ...response.data,
@@ -209,7 +209,7 @@ const CaseDetail = () => {
         formData.append('description', documentForm.description);
       }
 
-      const response = await axios.post(`/cases/${caseId}/documents/`, formData, {
+      const response = await api.post(`/cases/${caseId}/documents`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -242,7 +242,7 @@ const CaseDetail = () => {
       // Dla uproszczenia, przyjmujemy słowa kluczowe jako string oddzielony przecinkami
       formData.append('keywords', actForm.keywords.split(',').map(k => k.trim()));
 
-      const response = await axios.post(`/cases/${caseId}/fetch-legal-acts/`, formData);
+      const response = await api.post(`/cases/${caseId}/fetch-legal-acts/`, formData);
 
       // Dodanie nowych aktów prawnych do stanu
       setCaseData(prevData => ({
@@ -271,7 +271,7 @@ const CaseDetail = () => {
       // Dla uproszczenia, przyjmujemy słowa kluczowe jako string oddzielony przecinkami
       formData.append('keywords', judgmentForm.keywords.split(',').map(k => k.trim()));
 
-      const response = await axios.post(`/cases/${caseId}/fetch-judgments/`, formData);
+      const response = await api.post(`/cases/${caseId}/fetch-judgments/`, formData);
 
       // Dodanie nowych orzeczeń do stanu
       setCaseData(prevData => ({
@@ -299,7 +299,7 @@ const CaseDetail = () => {
       const formData = new FormData();
       formData.append('question', question);
 
-      const response = await axios.post(`/cases/${caseId}/ask/`, formData);
+      const response = await api.post(`/cases/${caseId}/ask/`, formData);
 
       // Dodanie nowego pytania do stanu
       setCaseData(prevData => ({

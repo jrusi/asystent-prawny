@@ -57,6 +57,11 @@ def create_response(content: Any, status_code: int = 200, headers: Dict[str, str
     """Create a response with CORS headers"""
     if headers is None:
         headers = {}
+        
+    # Ensure proper JSON serialization for all types
+    if not isinstance(content, (str, int, float, bool, type(None))):
+        content = json.loads(json.dumps(content, cls=CustomJSONEncoder))
+        
     return JSONResponse(
         content=content,
         status_code=status_code,
@@ -196,8 +201,14 @@ async def get_cases(request: Request, db: Session = Depends(get_db)):
             )
             
         cases = db.query(models.Case).filter(models.Case.owner_id == user.id).all()
+        
+        # Convert each case to a Pydantic model and then to dict with proper serialization
+        response_cases = [schemas.CaseResponse.model_validate(case) for case in cases]
+        response_dicts = [case.model_dump() for case in response_cases]
+        
+        # Use custom JSON encoder for the response
         return create_response(
-            [schemas.CaseResponse.from_orm(case) for case in cases],
+            json.loads(json.dumps(response_dicts, cls=CustomJSONEncoder)),
             headers=get_cors_headers(request)
         )
     except Exception as e:

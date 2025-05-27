@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';  // Import our configured api instance
 import {
   Typography,
   Box,
@@ -42,11 +42,10 @@ const NewCase = () => {
     setError('');
     
     try {
-      const formDataObj = new FormData();
-      formDataObj.append('title', formData.title);
-      formDataObj.append('description', formData.description);
-      
-      const response = await axios.post('/cases/', formDataObj);
+      const response = await api.post('/cases', {  // Use api instance and correct path
+        title: formData.title,
+        description: formData.description
+      });
       
       // Przekierowanie do nowo utworzonej sprawy
       navigate(`/cases/${response.data.id}`);

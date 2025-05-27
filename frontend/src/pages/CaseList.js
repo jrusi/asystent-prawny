@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';  // Import our configured api instance
 import {
   Typography,
   Box,
@@ -36,7 +36,7 @@ const CaseList = () => {
   useEffect(() => {
     const fetchCases = async () => {
       try {
-        const response = await axios.get('/cases/');
+        const response = await api.get('/cases');  // Use api instance and correct path
         setCases(response.data);
         setFilteredCases(response.data);
         setLoading(false);

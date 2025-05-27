@@ -38,7 +38,7 @@ const Dashboard = () => {
       try {
         console.log('Fetching cases...');
         // Pobieranie listy spraw
-        const casesResponse = await api.get('/cases/');
+        const casesResponse = await api.get('/cases');
         console.log('Cases response:', casesResponse.data);
         setCases(Array.isArray(casesResponse.data) ? casesResponse.data : []);
         

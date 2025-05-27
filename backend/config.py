@@ -19,10 +19,10 @@ class Settings:
         codespace_name = os.getenv("CODESPACE_NAME")
         domain = os.getenv("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev")
         if codespace_name:
-            # Add specific Codespaces URLs
+            # Add Codespaces URLs with wildcard for subdomains
             BACKEND_CORS_ORIGINS.extend([
-                f"https://{codespace_name}-3000.{domain}",  # Frontend URL
-                f"https://{codespace_name}-8000.{domain}",  # Backend URL
+                f"https://{codespace_name}-*.{domain}",  # Any port in Codespaces
+                "https://*.app.github.dev",  # Any Codespaces URL
             ])
     
     # Database settings

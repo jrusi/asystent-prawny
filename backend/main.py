@@ -20,7 +20,29 @@ api_router = APIRouter(prefix="/api")
 
 def get_cors_headers(request: Request) -> Dict[str, str]:
     """Get CORS headers for response"""
-    origin = request.headers.get("origin", "*")
+    origin = request.headers.get("origin")
+    if not origin:
+        return {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "600",
+        }
+        
+    # Check if origin is allowed
+    allowed = False
+    for allowed_origin in settings.BACKEND_CORS_ORIGINS:
+        if origin.startswith(allowed_origin) or (
+            '.app.github.dev' in origin and 
+            any(o.endswith('.app.github.dev') for o in settings.BACKEND_CORS_ORIGINS)
+        ):
+            allowed = True
+            break
+            
+    if not allowed:
+        return {}
+        
     return {
         "Access-Control-Allow-Origin": origin,
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",

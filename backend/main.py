@@ -23,10 +23,10 @@ app = FastAPI(
     version=settings.VERSION
 )
 
-# Configure CORS
+# Configure CORS - must be before adding routes
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=["*"],  # For development - update this in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,31 +47,8 @@ MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100MB in bytes
 
 def get_cors_headers(request: Request) -> Dict[str, str]:
     """Get CORS headers for response"""
-    origin = request.headers.get("origin")
-    if not origin:
-        return {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Max-Age": "600",
-        }
-        
-    # Check if origin is allowed
-    allowed = False
-    for allowed_origin in settings.BACKEND_CORS_ORIGINS:
-        if origin.startswith(allowed_origin) or (
-            '.app.github.dev' in origin and 
-            any(o.endswith('.app.github.dev') for o in settings.BACKEND_CORS_ORIGINS)
-        ):
-            allowed = True
-            break
-            
-    if not allowed:
-        return {}
-        
     return {
-        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Origin": "*",  # For development - update this in production
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
         "Access-Control-Allow-Credentials": "true",
@@ -118,12 +95,20 @@ async def create_user(request: Request, db: Session = Depends(get_db)):
         db_user = models.User(
             email=user_data["email"],
             hashed_password=hashed_password,
-            full_name=user_data.get("full_name", "")
+            full_name=user_data.get("full_name", ""),
+            is_active=True
         )
         
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
+        
+        # Create user directory in MinIO
+        try:
+            minio_client.create_user_bucket(db_user.id)
+        except Exception as e:
+            print(f"Error creating MinIO directory for user {db_user.id}: {str(e)}")
+            # Continue even if MinIO directory creation fails
         
         return create_response(
             {
@@ -134,6 +119,7 @@ async def create_user(request: Request, db: Session = Depends(get_db)):
             headers=get_cors_headers(request)
         )
     except Exception as e:
+        print(f"Registration error: {str(e)}")  # Add logging
         return create_response(
             {"detail": str(e)},
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -182,6 +168,7 @@ async def login_for_access_token(
             headers=get_cors_headers(request)
         )
     except Exception as e:
+        print(f"Login error: {str(e)}")  # Add logging
         return create_response(
             {"detail": str(e)},
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -194,21 +181,29 @@ async def read_users_me(request: Request, db: Session = Depends(get_db)):
     if request.method == "OPTIONS":
         return Response(status_code=200, headers=get_cors_headers(request))
         
-    user = await get_current_active_user(request, db)
-    if not user:
+    try:
+        user = await get_current_active_user(request, db)
+        if not user:
+            return create_response(
+                {"detail": "Not authenticated"},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                headers=get_cors_headers(request)
+            )
         return create_response(
-            {"detail": "Not authenticated"},
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            {
+                "id": user.id,
+                "email": user.email,
+                "full_name": user.full_name
+            },
             headers=get_cors_headers(request)
         )
-    return create_response(
-        {
-            "id": user.id,
-            "email": user.email,
-            "full_name": user.full_name
-        },
-        headers=get_cors_headers(request)
-    )
+    except Exception as e:
+        print(f"Get user error: {str(e)}")  # Add logging
+        return create_response(
+            {"detail": str(e)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            headers=get_cors_headers(request)
+        )
 
 @api_router.get("/cases", response_model=List[schemas.CaseResponse])
 async def get_cases(request: Request, db: Session = Depends(get_db)):

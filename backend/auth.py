@@ -42,10 +42,10 @@ async def get_current_user(request: Request, db: Session) -> Optional[models.Use
         return None
         
     # Public endpoints don't require authentication
-    public_endpoints = ["/api/token", "/api/users", "/api/health", "/api", "/docs", "/openapi.json"]
-    for endpoint in public_endpoints:
-        if request.url.path.rstrip("/") == f"/api{endpoint.rstrip('/')}" or request.url.path.rstrip("/") == endpoint.rstrip("/"):
-            return None
+    public_paths = ["/token", "/users", "/health", "", "/docs", "/openapi.json"]
+    current_path = request.url.path.replace("/api", "").rstrip("/")
+    if current_path in public_paths:
+        return None
 
     # Get token from header
     auth_header = request.headers.get("Authorization")
@@ -72,5 +72,5 @@ async def get_current_active_user(request: Request, db: Session) -> Optional[mod
         
     user = await get_current_user(request, db)
     if user and not user.is_active:
-        raise HTTPException(status_code=400, detail="Nieaktywny użytkownik")
+        return None
     return user

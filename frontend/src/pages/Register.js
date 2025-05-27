@@ -59,10 +59,23 @@ const Register = () => {
     setIsSubmitting(true);
 
     try {
-      await register(formData.email, formData.password, formData.full_name);
-      navigate('/login');
+      await register(
+        formData.email,
+        formData.password,
+        formData.full_name
+      );
+      // After successful registration, navigate to login
+      navigate('/login', { 
+        state: { 
+          message: 'Rejestracja zakończona sukcesem. Możesz się teraz zalogować.' 
+        } 
+      });
     } catch (error) {
-      setFormError(error.response?.data?.detail || 'Wystąpił błąd podczas rejestracji');
+      console.error('Registration error:', error);
+      setFormError(
+        error.response?.data?.detail || 
+        'Wystąpił błąd podczas rejestracji. Sprawdź czy podany email nie jest już zajęty.'
+      );
     } finally {
       setIsSubmitting(false);
     }

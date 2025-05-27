@@ -10,6 +10,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CaseDetail from './pages/CaseDetail';
 import CaseList from './pages/CaseList';
+import NewCase from './pages/NewCase';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import PasswordReset from './pages/PasswordReset';
@@ -99,6 +100,7 @@ function App() {
                 <Route path="/" element={<Navigate to="/dashboard" />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/cases" element={<CaseList />} />
+                <Route path="/cases/new" element={<NewCase />} />
                 <Route path="/cases/:caseId" element={<CaseDetail />} />
                 <Route path="/profile" element={<Profile />} />
               </Route>

@@ -152,3 +152,18 @@ class MinioClient:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Nie można pobrać listy plików: {str(e)}"
             )
+
+    def delete_file(self, file_path):
+        """Usuwanie pliku z MinIO"""
+        try:
+            self.client.remove_object(
+                bucket_name=self.bucket_name,
+                object_name=file_path
+            )
+            return True
+        except S3Error as e:
+            print(f"Błąd MinIO: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Nie można usunąć pliku: {str(e)}"
+            )

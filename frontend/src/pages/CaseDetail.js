@@ -316,6 +316,25 @@ const CaseDetail = () => {
     }
   };
 
+  const handleDeleteDocument = async (documentId) => {
+    if (!window.confirm('Czy na pewno chcesz usunąć ten dokument?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/cases/${caseId}/documents/${documentId}`);
+      
+      // Update the case data to remove the deleted document
+      setCaseData(prevData => ({
+        ...prevData,
+        documents: prevData.documents.filter(doc => doc.id !== documentId)
+      }));
+    } catch (err) {
+      console.error('Błąd podczas usuwania dokumentu:', err);
+      setError('Nie udało się usunąć dokumentu. Spróbuj ponownie później.');
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -424,7 +443,7 @@ const CaseDetail = () => {
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText
-                      primary={document.filename}
+                      primary={document.title}
                       secondary={
                         <>
                           <Typography
@@ -432,7 +451,7 @@ const CaseDetail = () => {
                             variant="body2"
                             color="text.primary"
                           >
-                            {document.document_type}
+                            {document.file_type}
                           </Typography>
                           {document.description && (
                             <Typography
@@ -454,6 +473,29 @@ const CaseDetail = () => {
                         </>
                       }
                     />
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.open(`/api/cases/${caseId}/documents/${document.id}`, '_blank');
+                        }}
+                      >
+                        Pobierz
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDeleteDocument(document.id);
+                        }}
+                      >
+                        Usuń
+                      </Button>
+                    </Box>
                   </ListItem>
                 </React.Fragment>
               ))}

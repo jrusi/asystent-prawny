@@ -547,6 +547,65 @@ async def get_document(
             headers=get_cors_headers(request)
         )
 
+@api_router.delete("/cases/{case_id}/documents/{document_id}")
+async def delete_document(
+    case_id: int,
+    document_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Delete a document from a case"""
+    if request.method == "OPTIONS":
+        return Response(status_code=200, headers=get_cors_headers(request))
+        
+    try:
+        user = await get_current_active_user(request, db)
+        if not user:
+            return create_response(
+                {"detail": "Not authenticated"},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                headers=get_cors_headers(request)
+            )
+            
+        # Get the document and verify ownership through case
+        document = db.query(models.Document).join(
+            models.Case
+        ).filter(
+            models.Document.id == document_id,
+            models.Document.case_id == case_id,
+            models.Case.owner_id == user.id  # Ensure case belongs to user
+        ).first()
+        
+        if not document:
+            return create_response(
+                {"detail": "Document not found or access denied"},
+                status_code=status.HTTP_404_NOT_FOUND,
+                headers=get_cors_headers(request)
+            )
+            
+        # Delete file from MinIO
+        try:
+            minio_client.delete_file(document.file_path)
+        except Exception as e:
+            print(f"Error deleting file from MinIO: {str(e)}")
+            # Continue with database deletion even if MinIO deletion fails
+            
+        # Delete document from database
+        db.delete(document)
+        db.commit()
+        
+        return create_response(
+            {"detail": "Document deleted successfully"},
+            headers=get_cors_headers(request)
+        )
+    except Exception as e:
+        db.rollback()  # Rollback transaction on error
+        return create_response(
+            {"detail": str(e)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            headers=get_cors_headers(request)
+        )
+
 # Add router to app
 app.include_router(api_router)
 

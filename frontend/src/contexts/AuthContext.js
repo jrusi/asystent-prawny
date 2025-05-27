@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
 import jwtDecode from 'jwt-decode';
+import api from '../utils/api';
 
 const AuthContext = createContext();
 
@@ -16,8 +16,7 @@ export const AuthProvider = ({ children }) => {
   const fetchUserData = async (authToken) => {
     console.log('Fetching user data...');
     try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
-      const response = await axios.get('/api/users/me');
+      const response = await api.get('/users/me');
       console.log('User data received:', response.data);
       setCurrentUser(response.data);
       return true;
@@ -63,7 +62,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     console.log('Attempting login...');
     try {
-      const response = await axios.post('/api/token', new URLSearchParams({
+      const response = await api.post('/token', new URLSearchParams({
         username: email,
         password: password
       }), {
@@ -93,14 +92,10 @@ export const AuthProvider = ({ children }) => {
   const register = async (email, password, fullName) => {
     console.log('Attempting registration...');
     try {
-      const response = await axios.post('/api/users', {
+      const response = await api.post('/users', {
         email: email,
         password: password,
         full_name: fullName
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
       });
 
       console.log('Registration successful:', response.data);
@@ -116,7 +111,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setToken(null);
     setCurrentUser(null);
-    delete axios.defaults.headers.common['Authorization'];
   };
 
   const value = {

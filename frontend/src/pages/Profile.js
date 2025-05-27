@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
+import api from '../utils/api';
 import {
   Typography,
   Box,
@@ -90,11 +90,7 @@ const Profile = () => {
       }
 
       console.log('Sending update request:', updateData);
-      await axios.put('/api/users/me', updateData, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      await api.put('/users/me', updateData);
       
       setSuccess('Profil został zaktualizowany pomyślnie');
       

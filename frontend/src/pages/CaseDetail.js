@@ -335,6 +335,32 @@ const CaseDetail = () => {
     }
   };
 
+  const handleDownloadDocument = async (documentId) => {
+    try {
+      const response = await api.get(`/cases/${caseId}/documents/${documentId}`, {
+        responseType: 'blob'
+      });
+      
+      // Create a blob URL and trigger download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      // Get filename from Content-Disposition header or use a default name
+      const contentDisposition = response.headers['content-disposition'];
+      const filename = contentDisposition
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : 'document';
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Błąd podczas pobierania dokumentu:', err);
+      setError('Nie udało się pobrać dokumentu. Spróbuj ponownie później.');
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -479,7 +505,7 @@ const CaseDetail = () => {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          window.open(`/api/cases/${caseId}/documents/${document.id}`, '_blank');
+                          handleDownloadDocument(document.id);
                         }}
                       >
                         Pobierz

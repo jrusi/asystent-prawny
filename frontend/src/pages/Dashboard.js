@@ -40,7 +40,14 @@ const Dashboard = () => {
         const casesResponse = await api.get('/cases');
         console.log('Cases response:', casesResponse);
         const casesData = casesResponse.data || [];
-        setCases(Array.isArray(casesData) ? casesData : []);
+        // Ensure each case has documents array initialized
+        const normalizedCases = Array.isArray(casesData) ? casesData.map(caseItem => ({
+          ...caseItem,
+          documents: Array.isArray(caseItem?.documents) ? caseItem.documents : [],
+          legal_acts: Array.isArray(caseItem?.legal_acts) ? caseItem.legal_acts : [],
+          judgments: Array.isArray(caseItem?.judgments) ? caseItem.judgments : []
+        })) : [];
+        setCases(normalizedCases);
         
         // Tutaj moglibyśmy pobierać najnowsze dokumenty, ale dla uproszczenia
         // użyjemy przykładowych danych

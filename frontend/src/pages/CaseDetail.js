@@ -102,7 +102,14 @@ const CaseDetail = () => {
     const fetchCaseData = async () => {
       try {
         const response = await axios.get(`/cases/${caseId}`);
-        setCaseData(response.data);
+        // Ensure documents array is initialized
+        const caseData = {
+          ...response.data,
+          documents: Array.isArray(response.data?.documents) ? response.data.documents : [],
+          legal_acts: Array.isArray(response.data?.legal_acts) ? response.data.legal_acts : [],
+          judgments: Array.isArray(response.data?.judgments) ? response.data.judgments : []
+        };
+        setCaseData(caseData);
         setLoading(false);
       } catch (err) {
         console.error('Błąd pobierania szczegółów sprawy:', err);

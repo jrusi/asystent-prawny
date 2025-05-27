@@ -55,6 +55,23 @@ app = FastAPI(
     version=settings.VERSION
 )
 
+# Middleware to handle OPTIONS requests
+@app.middleware("http")
+async def handle_options(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return JSONResponse(
+            status_code=200,
+            content={"message": "OK"},
+            headers={
+                "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Authorization, Content-Type",
+                "Access-Control-Allow-Credentials": "true",
+            },
+        )
+    response = await call_next(request)
+    return response
+
 # Konfiguracja CORS
 app.add_middleware(
     CORSMiddleware,
@@ -87,6 +104,24 @@ async def health_check():
         },
         headers={"Content-Type": "application/json; charset=utf-8"}
     )
+
+# Public endpoints that don't require authentication
+public_endpoints = [
+    "/api/token",
+    "/api/users",
+    "/api/health",
+    "/api"
+]
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    # Skip authentication for OPTIONS requests and public endpoints
+    if request.method == "OPTIONS" or any(request.url.path.startswith(endpoint) for endpoint in public_endpoints):
+        return await call_next(request)
+
+    # Continue with authentication for other requests
+    response = await call_next(request)
+    return response
 
 # Endpointy uwierzytelniania
 @api_router.post("/token")  # Remove trailing slash

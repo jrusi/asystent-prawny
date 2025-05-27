@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -17,8 +17,19 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 
+class CustomOAuth2PasswordBearer(OAuth2PasswordBearer):
+    async def __call__(self, request: Request) -> Optional[str]:
+        # List of endpoints that don't require authentication
+        public_endpoints = ["/api/token", "/api/users", "/api/health", "/api"]
+        
+        # Skip authentication for public endpoints
+        if any(request.url.path.startswith(endpoint) for endpoint in public_endpoints):
+            return None
+            
+        return await super().__call__(request)
+
+oauth2_scheme = CustomOAuth2PasswordBearer(tokenUrl="api/token")
 
 def verify_password(plain_password, hashed_password):
     """Weryfikacja hasła"""
@@ -42,8 +53,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+async def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     """Pobieranie aktualnie zalogowanego użytkownika na podstawie JWT"""
+    # If no token is provided for public endpoints
+    if token is None:
+        return None
+        
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Nie można zweryfikować poświadczeń",
@@ -64,8 +79,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     return user
 
 
-async def get_current_active_user(current_user: models.User = Depends(get_current_user)):
+async def get_current_active_user(current_user: Optional[models.User] = Depends(get_current_user)):
     """Sprawdzanie czy użytkownik jest aktywny"""
+    # For public endpoints where current_user is None
+    if current_user is None:
+        return None
+        
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Nieaktywny użytkownik")
     return current_user

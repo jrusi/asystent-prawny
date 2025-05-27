@@ -1,6 +1,13 @@
-from pydantic import BaseModel, EmailStr, Field, HttpUrl
+from pydantic import BaseModel, EmailStr, Field, HttpUrl, ConfigDict
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
+
+# Base configuration for all models
+class BaseConfig:
+    from_attributes = True
+    json_encoders = {
+        datetime: lambda dt: dt.isoformat()
+    }
 
 # Schematy użytkownika
 class UserBase(BaseModel):
@@ -15,8 +22,7 @@ class User(UserBase):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(**BaseConfig.__dict__)
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -26,8 +32,7 @@ class UserResponse(UserBase):
     id: int
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(**BaseConfig.__dict__)
 
 # Schema tokenu uwierzytelniającego
 class Token(BaseModel):
@@ -53,8 +58,7 @@ class DocumentResponse(DocumentBase):
     created_at: datetime
     case_id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(**BaseConfig.__dict__)
 
 class DocumentContent(BaseModel):
     content_text: str
@@ -77,8 +81,7 @@ class LegalActResponse(LegalActBase):
     local_path: Optional[str] = None
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(**BaseConfig.__dict__)
 
 # Schematy orzeczenia sądowego
 class JudgmentBase(BaseModel):
@@ -103,8 +106,7 @@ class JudgmentResponse(JudgmentBase):
     source_url: Optional[str] = None
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(**BaseConfig.__dict__)
 
 # Schematy sprawy
 class CaseBase(BaseModel):
@@ -127,8 +129,7 @@ class CaseResponse(CaseBase):
     legal_acts: List[LegalActResponse] = []
     judgments: List[JudgmentResponse] = []
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(**BaseConfig.__dict__)
 
 # Schematy pytania i odpowiedzi
 class QuestionCreate(BaseModel):
@@ -142,8 +143,7 @@ class QuestionResponse(BaseModel):
     created_at: datetime
     case_id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(**BaseConfig.__dict__)
 
 class AnswerCreate(BaseModel):
     answer_text: str

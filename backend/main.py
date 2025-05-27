@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, status, Request, APIRouter, Depends, Form
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Dict, Any, List
+import json
 
 from database import get_db
 import models
@@ -206,6 +207,12 @@ async def get_cases(request: Request, db: Session = Depends(get_db)):
             headers=get_cors_headers(request)
         )
 
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
 @api_router.post("/cases", response_model=schemas.CaseResponse)
 async def create_case(request: Request, db: Session = Depends(get_db)):
     """Create a new case"""
@@ -237,10 +244,13 @@ async def create_case(request: Request, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(db_case)
         
-        # Create response using model
+        # Convert to Pydantic model and then to dict with datetime handling
         response = schemas.CaseResponse.model_validate(db_case)
+        response_dict = response.model_dump()
+        
+        # Use custom JSON encoder for the response
         return create_response(
-            response.model_dump(),
+            json.loads(json.dumps(response_dict, cls=CustomJSONEncoder)),
             headers=get_cors_headers(request)
         )
     except Exception as e:
